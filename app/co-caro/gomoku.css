@@ -1,0 +1,102 @@
+.gomoku-page { width: min(calc(100% - 40px), 1240px); margin: 0 auto; padding: 34px 0 76px; }
+.gomoku-hero { min-height: 185px; display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 32px 42px; border: 1px solid #f0d2ca; border-radius: 32px; background: linear-gradient(120deg, #fff 12%, #fff0eb); overflow: hidden; }
+.gomoku-hero h1 { margin: 0; font-size: clamp(40px, 6vw, 64px); line-height: 1; letter-spacing: -2.8px; }
+.gomoku-hero p:last-child { margin: 13px 0 0; color: var(--muted); }
+.gomoku-hero > span { width: 108px; height: 108px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 32px; background: #fff; font-size: 58px; transform: rotate(5deg); box-shadow: 0 14px 28px rgba(198, 90, 65, .13); }
+.gomoku-panel { margin-top: 20px; padding: 26px; border: 1px solid #e9e5da; border-radius: 26px; background: #fff; box-shadow: 0 12px 30px rgba(42,54,44,.05); }
+.gomoku-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.gomoku-panel-heading h2 { margin: 0; font-size: 27px; letter-spacing: -.8px; }
+.gomoku-panel-heading .kicker { margin-bottom: 6px; color: #dc654f; }
+.gomoku-heading-actions { display: flex; gap: 8px; }
+.gomoku-button, .gomoku-game-actions button, .gomoku-replay-controls button, .gomoku-record-actions button, .gomoku-zoom-controls button { min-height: 43px; border: 1px solid #b94b39; border-radius: 13px; padding: 0 15px; background: #dc654f; color: #fff; font-weight: 900; cursor: pointer; transition: transform .16s, box-shadow .16s, opacity .16s; }
+.gomoku-button:hover:not(:disabled), .gomoku-game-actions button:hover:not(:disabled), .gomoku-replay-controls button:hover:not(:disabled), .gomoku-record-actions button:hover:not(:disabled), .gomoku-zoom-controls button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 0 #a84332; }
+.gomoku-button:focus-visible, .gomoku-page button:focus-visible, .gomoku-page input:focus-visible, .gomoku-page select:focus-visible { outline: 3px solid #f7c943; outline-offset: 2px; }
+.gomoku-button:disabled, .gomoku-page button:disabled { opacity: .42; cursor: not-allowed; }
+.gomoku-button.secondary, .gomoku-game-actions button.secondary { border-color: #dfd8cb; background: #fff; color: #68766e; }
+.gomoku-button.danger, .gomoku-record-actions button.danger { border-color: #e5b4ac; background: #fff2ef; color: #b64e3b; }
+.gomoku-setup-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.gomoku-setup-form legend { margin-bottom: 10px; color: #65736b; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; }
+.gomoku-mode-picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.gomoku-mode-picker legend { grid-column: 1 / -1; }
+.gomoku-mode-picker label { position: relative; min-height: 112px; padding: 18px; border: 2px solid #e8e4da; border-radius: 20px; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; gap: 3px 12px; cursor: pointer; background: #fffefa; }
+.gomoku-mode-picker label.is-selected { border-color: #df765f; background: #fff5f1; box-shadow: 0 0 0 4px #ffebe5; }
+.gomoku-mode-picker label:has(input:focus-visible) { outline: 4px solid #f7c943; outline-offset: 3px; }
+.gomoku-mode-picker input { position: absolute; opacity: 0; }
+.gomoku-mode-picker label > span { grid-row: 1 / 3; align-self: center; font-size: 34px; }
+.gomoku-mode-picker strong { align-self: end; font-size: 16px; }
+.gomoku-mode-picker small { color: #7e8982; }
+.gomoku-player-fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 22px; }
+.gomoku-player-fields fieldset { padding: 18px; border: 1px solid #ece7dd; border-radius: 19px; background: #fffdf9; }
+.gomoku-player-fields fieldset > label, .gomoku-setup-options > label { display: grid; gap: 7px; color: #55645b; font-size: 12px; font-weight: 900; }
+.gomoku-player-fields fieldset > label + label { margin-top: 13px; }
+.gomoku-setup-form input, .gomoku-setup-form select { width: 100%; min-height: 46px; border: 2px solid #e4e0d6; border-radius: 13px; padding: 0 12px; background: #fff; color: var(--ink); font: inherit; outline: 0; }
+.gomoku-setup-form input:focus, .gomoku-setup-form select:focus { border-color: #dd715b; }
+.gomoku-computer-name { min-height: 46px; margin: 0 0 13px; padding: 0 12px; display: flex; align-items: center; border-radius: 13px; background: #eef5ff; font-weight: 900; }
+.gomoku-form-error { margin: 10px 0 0; color: #bb4938; font-size: 13px; font-weight: 800; }
+.gomoku-storage-notice { margin: 14px 0 0; color: #a84739; text-align: center; font-size: 12px; font-weight: 800; }
+.gomoku-setup-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.gomoku-start { width: 100%; min-height: 54px; margin-top: 22px; font-size: 16px; }
+.gomoku-game-layout { display: grid; grid-template-columns: 235px minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 20px; }
+.gomoku-sidebar, .gomoku-board-section { border: 1px solid #e7e3d9; border-radius: 24px; background: #fff; box-shadow: 0 10px 28px rgba(42,54,44,.05); }
+.gomoku-board-column { min-width: 0; }
+.gomoku-sidebar { padding: 17px; }
+.gomoku-turn-card { padding: 16px; border-radius: 18px; background: linear-gradient(130deg, #fff1ec, #fff8df); }
+.gomoku-turn-card p { margin: 0 0 7px; color: #776e67; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .7px; }
+.gomoku-turn-card strong { display: block; font-size: 18px; line-height: 1.25; }
+.gomoku-turn-card span { display: block; margin-top: 8px; color: #817d75; font-size: 11px; }
+.gomoku-player-list { display: grid; gap: 8px; margin-top: 14px; }
+.gomoku-player-list article { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #eeeae1; border-radius: 15px; }
+.gomoku-player-list article.is-active { border-color: #e0a292; background: #fff7f4; }
+.gomoku-player-list article > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px #eee7df; font-size: 25px; font-weight: 900; }
+.gomoku-player-list article div { min-width: 0; }
+.gomoku-player-list strong, .gomoku-player-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gomoku-player-list strong { font-size: 13px; }.gomoku-player-list small { margin-top: 2px; color: #8a918c; font-size: 10px; }
+.gomoku-game-actions { display: grid; gap: 7px; margin-top: 14px; }
+.gomoku-game-actions button { min-height: 39px; padding: 0 9px; border-color: #d7e1da; background: #edf7f0; color: #2d6c51; box-shadow: none; font-size: 12px; }
+.gomoku-game-actions button:hover:not(:disabled) { box-shadow: 0 3px 0 #b8d6c2; }
+.gomoku-board-section { min-width: 0; padding: 15px; }
+.gomoku-zoom-controls { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.gomoku-zoom-controls button { min-width: 42px; min-height: 38px; padding: 0 10px; border-color: #d8e2da; background: #f2f8f3; color: #356a51; box-shadow: none; }
+.gomoku-zoom-controls output { min-width: 128px; color: #53625a; text-align: center; font-size: 12px; font-weight: 900; }
+.gomoku-viewport { height: min(65svh, 680px); min-height: 420px; display: grid; place-items: center; overflow: hidden; border: 1px solid #d8cdbd; border-radius: 18px; background-color: #f6dfad; background-image: radial-gradient(#cfac72 1px, transparent 1px); background-size: 14px 14px; touch-action: none; cursor: grab; user-select: none; }
+.gomoku-viewport:active { cursor: grabbing; }
+.gomoku-board { position: relative; flex: 0 0 auto; display: grid; transform-origin: center center; box-shadow: 0 5px 18px rgba(82, 52, 24, .18); }
+.gomoku-cell { position: relative; width: 28px; height: 28px; min-height: 0; padding: 0; display: grid; place-items: center; border: 0; border-right: 1px solid rgba(111,78,41,.28); border-bottom: 1px solid rgba(111,78,41,.28); border-radius: 0; background: rgba(255, 231, 177, .92); cursor: pointer; box-shadow: none; }
+.gomoku-cell:hover:not([aria-disabled="true"]) { background: #fff1c9; }
+.gomoku-cell span { position: relative; z-index: 2; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.88); font-size: 18px; line-height: 1; font-weight: 900; filter: drop-shadow(0 1px 1px rgba(79,56,32,.2)); }
+.gomoku-cell.is-latest::after { content: ""; position: absolute; z-index: 3; inset: 2px; border: 2px solid #f2b722; border-radius: 6px; pointer-events: none; }
+.gomoku-cell.is-winning { background: #fff39f; }
+.gomoku-cell.is-winning span { box-shadow: 0 0 0 3px #f5bd22; }
+.gomoku-cell.is-blinking span { animation: gomoku-win-blink .55s ease-in-out infinite alternate; }
+.gomoku-winning-line { position: absolute; z-index: 4; height: 4px; border-radius: 10px; background: #f1a50f; box-shadow: 0 0 0 1px rgba(255,255,255,.7); transform-origin: left center; pointer-events: none; }
+.gomoku-board-hint { margin: 10px 0 0; color: #7f887f; text-align: center; font-size: 11px; }
+.gomoku-announcement { min-height: 22px; margin: 9px 0 0; color: #66766d; text-align: center; font-size: 12px; font-weight: 800; }
+.gomoku-help p { line-height: 1.6; }.gomoku-help p + p { margin-top: 10px; }
+@keyframes gomoku-win-blink { from { opacity: .3; transform: scale(.78); } to { opacity: 1; transform: scale(1.1); } }
+.gomoku-history-panel { min-height: 300px; }
+.gomoku-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.gomoku-stats-grid article { padding: 13px; border: 1px solid #dce8df; border-radius: 15px; background: #f5fbf7; }
+.gomoku-stats-grid strong, .gomoku-stats-grid span, .gomoku-stats-grid small { display: block; }
+.gomoku-stats-grid strong { text-transform: capitalize; font-size: 13px; }.gomoku-stats-grid span { margin-top: 4px; color: #3f7159; font-size: 12px; font-weight: 800; }.gomoku-stats-grid small { margin-top: 3px; color: #78857d; line-height: 1.4; }
+.gomoku-empty { padding: 45px 20px; text-align: center; }.gomoku-empty > span { font-size: 46px; }.gomoku-empty h3 { margin: 10px 0 5px; }.gomoku-empty p { margin: 0; color: var(--muted); }
+.gomoku-history-layout { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.gomoku-record-list { max-height: 630px; display: grid; gap: 9px; overflow: auto; padding-right: 4px; }
+.gomoku-record-list article { padding: 13px; border: 1px solid #e8e3d9; border-radius: 16px; background: #fffdf9; }
+.gomoku-record-list article.is-selected { border-color: #e28a76; background: #fff6f2; }
+.gomoku-record-list article > div:first-child { display: flex; justify-content: space-between; gap: 10px; }
+.gomoku-record-list article > div:first-child strong { font-size: 12px; }.gomoku-record-list article > div:first-child span { color: #be5743; font-size: 11px; font-weight: 900; }
+.gomoku-record-list article > small { display: block; margin-top: 5px; color: #818b84; font-size: 10px; }
+.gomoku-record-actions { display: flex; gap: 5px; margin-top: 9px; }
+.gomoku-record-actions button { min-height: 31px; padding: 0 8px; border-color: #dce4de; background: #f5faf6; color: #426952; font-size: 10px; box-shadow: none; }
+.gomoku-replay { min-width: 0; padding: 15px; border: 1px solid #e7e1d5; border-radius: 19px; background: #fffefa; }
+.gomoku-replay-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+.gomoku-replay-heading div strong, .gomoku-replay-heading div span { display: block; }.gomoku-replay-heading div strong { font-size: 14px; }.gomoku-replay-heading div span, .gomoku-replay-heading > span { margin-top: 3px; color: #77827b; font-size: 11px; }
+.gomoku-snapshot-wrap { width: min(100%, 570px); aspect-ratio: 1; margin: 0 auto; padding: 6px; display: grid; place-items: stretch; overflow: hidden; border-radius: 12px; background: #e4c688; }
+.gomoku-snapshot { width: 100%; height: 100%; display: grid; }
+.gomoku-snapshot > span { min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; border-right: 1px solid rgba(99,69,32,.18); border-bottom: 1px solid rgba(99,69,32,.18); background: #f5dfae; font-size: clamp(3px, 1.3vw, 14px); font-weight: 900; line-height: 1; }
+.gomoku-snapshot > span.is-winning { background: #fff18b; box-shadow: inset 0 0 0 1px #e5ac16; }
+.gomoku-replay-controls { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.gomoku-replay-controls button { min-width: 39px; min-height: 37px; padding: 0 10px; border-color: #cfded3; background: #edf7ef; color: #2e694d; box-shadow: none; }
+@media (max-width: 900px) { .gomoku-game-layout { grid-template-columns: 1fr; }.gomoku-sidebar { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; }.gomoku-player-list, .gomoku-game-actions { margin-top: 0; }.gomoku-viewport { height: 60svh; }.gomoku-history-layout { grid-template-columns: 1fr; }.gomoku-record-list { max-height: 310px; } }
+@media (max-width: 650px) { .gomoku-page { width: min(calc(100% - 24px), 1240px); padding-top: 20px; }.gomoku-hero { min-height: 205px; padding: 25px 22px; align-items: flex-start; }.gomoku-hero > span { width: 72px; height: 72px; border-radius: 22px; font-size: 39px; }.gomoku-panel { padding: 18px 14px; border-radius: 21px; }.gomoku-panel-heading { align-items: flex-start; }.gomoku-panel-heading h2 { font-size: 23px; }.gomoku-mode-picker, .gomoku-player-fields, .gomoku-setup-options { grid-template-columns: 1fr; }.gomoku-sidebar { display: block; }.gomoku-player-list, .gomoku-game-actions { margin-top: 12px; }.gomoku-game-actions { grid-template-columns: repeat(2, 1fr); }.gomoku-board-section { padding: 9px; }.gomoku-zoom-controls { flex-wrap: wrap; }.gomoku-zoom-controls output { min-width: 105px; }.gomoku-viewport { height: 58svh; min-height: 370px; }.gomoku-history-panel .gomoku-panel-heading { flex-direction: column; }.gomoku-heading-actions { width: 100%; }.gomoku-heading-actions button { flex: 1; }.gomoku-record-list article > div:first-child { flex-direction: column; gap: 3px; }.gomoku-snapshot-wrap { padding: 3px; }.gomoku-replay-controls button { min-width: 34px; padding: 0 7px; } }
+@media (prefers-reduced-motion: reduce) { .gomoku-cell.is-blinking span { animation: none; } }
