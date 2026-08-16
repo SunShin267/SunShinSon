@@ -12,7 +12,13 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate --name quiz-admin",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+    "db:seed:generate": "node scripts/generate-quiz-seed.mjs",
+    "db:seed:local": "wrangler d1 execute DB --local --file db/seed/questions.sql --config wrangler.jsonc",
+    "db:seed:remote": "wrangler d1 execute DB --remote --file db/seed/questions.sql --config wrangler.jsonc",
+    "deploy:cloudflare": "npm run build && wrangler deploy --config wrangler.jsonc"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
