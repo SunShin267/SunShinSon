@@ -34,3 +34,10 @@ Fresh final-tree verification:
 - The successful builds retain the existing non-fatal linked-worktree/multiple-lockfile warning and Node `module.register()` deprecation warning.
 - Codebase Memory Tier 2 verification used generation `2026-08-16T17:32:57Z`. Operated source paths had no recorded coverage gaps and matching metadata at inspection time. `public/**` is intentionally excluded from the graph, so social/Stockfish assets were inspected directly and verified by size/byte comparison.
 - The pre-existing untracked execution plan at `docs/superpowers/plans/2026-08-16-home-games-fast-execution.md` was preserved and excluded from this task's commit.
+
+## Review fix — persisted Gomoku player tuples
+
+- Tightened persisted-player validation so each two-player tuple must contain exactly one `p1` and one `p2`; duplicate identities are now rejected before replay or rendering.
+- Player name, color, and piece fields must contain at least one non-whitespace character while retaining their existing length bounds. Corrupt records with blank display fields are skipped individually by `loadGomokuHistory()`.
+- No automated tests were created or run, per the user override.
+- Fresh review-fix verification: `npm run lint` exit 0, `npm run build` exit 0, and `npm run build:pages` exit 0 with all six static pages generated.

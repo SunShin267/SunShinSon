@@ -51,12 +51,23 @@ function isCoord(value: unknown): value is Coord {
   return Array.isArray(value) && value.length === 2 && value.every(Number.isInteger);
 }
 
+function isNonBlankString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= maxLength;
+}
+
 function isPlayer(value: unknown): value is PlayerConfig {
   return isObject(value)
     && (value.id === "p1" || value.id === "p2")
-    && typeof value.name === "string" && value.name.length > 0 && value.name.length <= 60
-    && typeof value.color === "string" && value.color.length <= 64
-    && typeof value.piece === "string" && value.piece.length <= 8;
+    && isNonBlankString(value.name, 60)
+    && isNonBlankString(value.color, 64)
+    && isNonBlankString(value.piece, 8);
+}
+
+function isPlayerTuple(value: unknown): value is readonly [PlayerConfig, PlayerConfig] {
+  return Array.isArray(value)
+    && value.length === 2
+    && value.every(isPlayer)
+    && value[0].id !== value[1].id;
 }
 
 function isMove(value: unknown): value is Move {
@@ -72,7 +83,7 @@ function isRecord(value: unknown): value is GomokuGameRecord {
     && typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt))
     && (value.mode === "local" || value.mode === "computer")
     && (value.difficulty === undefined || value.difficulty === "easy" || value.difficulty === "medium" || value.difficulty === "hard")
-    && Array.isArray(value.players) && value.players.length === 2 && value.players.every(isPlayer)
+    && isPlayerTuple(value.players)
     && (value.startingPlayer === "p1" || value.startingPlayer === "p2")
     && (value.result === "p1" || value.result === "p2" || value.result === "draw")
     && (value.size === 20 || value.size === 30 || value.size === 40 || value.size === 50)
