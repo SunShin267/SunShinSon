@@ -33,3 +33,15 @@
 
 - The build prints the repository's existing multiple-lockfile warning and a Node deprecation warning, but completes successfully.
 - `docs/superpowers/plans/2026-08-16-home-games-fast-execution.md` was already untracked in the worktree and is intentionally excluded from this task's commit.
+
+## Review fixes
+
+- Added the generic `GameShell` API `isGameInProgress` and `onLeaveGame`. Home and logout actions now open a shared Vietnamese confirmation dialog whenever a caller marks the current game unfinished; confirmation invokes `onLeaveGame` before navigation.
+- Added the generic `helpContent` slot. When supplied, `GameShell` renders a shared header help trigger and accessible help dialog. The three initial route shells supply concise placeholder guidance.
+- Added matching shared dialog and help-button styling without changing the existing Home design.
+
+### Fix verification
+
+- `npm run lint` — exit 0. Output: `eslint . --ignore-pattern dist --ignore-pattern .next` completed with no diagnostics.
+- `npm run build:pages` — exit 0. Output: Pages static build compiled, type-checked, and generated `/`, `/_not-found`, `/co-caro`, `/co-vua`, and `/tim-so` as static content.
+- No automated tests were created or run, per the user override.

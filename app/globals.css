@@ -106,6 +106,20 @@ button { color: inherit; }
 .header-name { font-weight: 800; font-size: 14px; }
 .logout-button { width: 36px; height: 36px; border: 1px solid #e5e1d7; border-radius: 12px; background: #fff; cursor: pointer; color: #819087; font-weight: 900; transition: .2s; }
 .logout-button:hover { background: #fff0ec; color: #d66852; border-color: #ffd6cc; }
+.help-button { width: 36px; height: 36px; border: 1px solid #e5e1d7; border-radius: 12px; background: #fff; cursor: pointer; color: var(--green); font-weight: 900; font-size: 18px; transition: .2s; }
+.help-button:hover { background: #eef8f0; border-color: #b8ddc2; }
+.game-overlay { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(36, 55, 46, .35); }
+.game-dialog { width: min(100%, 440px); padding: 28px; border: 1px solid #ece8dc; border-radius: 24px; background: #fffdf7; box-shadow: 0 24px 60px rgba(36, 55, 46, .2); }
+.game-dialog--help { max-height: min(80svh, 620px); overflow: auto; }
+.game-dialog h2 { margin: 0; font-size: 24px; letter-spacing: -.6px; }
+.game-dialog p { margin: 13px 0 0; color: var(--muted); line-height: 1.55; }
+.game-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.game-dialog-close { width: 36px; height: 36px; border: 1px solid #e5e1d7; border-radius: 12px; background: #fff; color: var(--ink); cursor: pointer; font-size: 24px; line-height: 1; }
+.game-help-content { margin-top: 18px; }
+.game-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.game-dialog-actions button { min-height: 42px; border-radius: 13px; padding: 0 16px; cursor: pointer; font-weight: 900; }
+.game-dialog-secondary { border: 1px solid #e5e1d7; background: #fff; color: #69766e; }
+.game-dialog-primary { border: 1px solid #19513d; background: var(--green); color: #fff; }
 .home-content, .topic-content { width: min(calc(100% - 40px), 1180px); margin: 0 auto; }
 .home-content { padding: 54px 0 70px; }
 .welcome-block { display: flex; align-items: center; justify-content: space-between; gap: 36px; margin-bottom: 45px; }

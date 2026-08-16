@@ -13,7 +13,7 @@ type GamePlaceholderProps = {
 
 export function GamePlaceholder({ eyebrow, title, description, icon, color, accent }: GamePlaceholderProps) {
   return (
-    <GameShell>
+    <GameShell helpContent={<p>Sun sẽ hướng dẫn cách chơi {title} ngay khi trò chơi sẵn sàng.</p>}>
       <main className="topic-content">
         <section className="topic-hero" style={{ "--topic": color, "--topic-soft": accent } as React.CSSProperties}>
           <div className="topic-hero-copy">
