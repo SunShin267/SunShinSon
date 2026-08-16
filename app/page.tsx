@@ -109,7 +109,7 @@ function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
               id="child-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Ví dụ: Minh Anh"
+              placeholder="Ví dụ: Thiện Phước"
               maxLength={30}
               autoComplete="name"
               autoFocus
