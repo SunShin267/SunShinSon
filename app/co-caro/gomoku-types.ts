@@ -33,6 +33,8 @@ export type GomokuConfig = {
 
 export type GomokuState = {
   size: BoardSize;
+  /** World coordinate rendered in the board's top-left cell. */
+  origin: Coord;
   cells: Readonly<Record<string, Stone>>;
   moves: readonly Move[];
   turn: Stone;

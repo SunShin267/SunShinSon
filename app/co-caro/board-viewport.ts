@@ -17,5 +17,10 @@ export function sizeForZoom(zoom: number): BoardSize {
 
 export function expandBoard(state: GomokuState, requestedSize: BoardSize): GomokuState {
   if (requestedSize <= state.size) return state;
-  return { ...state, size: requestedSize };
+  const addedBefore = Math.floor((requestedSize - state.size) / 2);
+  return {
+    ...state,
+    size: requestedSize,
+    origin: [state.origin[0] - addedBefore, state.origin[1] - addedBefore],
+  };
 }

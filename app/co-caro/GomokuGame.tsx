@@ -5,12 +5,12 @@ import { GameShell } from "../components/GameShell";
 import { readChildName } from "../lib/child-session";
 import { findLegalFallbackMove, requestComputerMove } from "./gomoku-ai-client";
 import { expandBoard } from "./board-viewport";
-import { createGomokuGame, playMove, undoTurn } from "./gomoku-engine";
+import { createGomokuGame, isInBounds, playMove, undoTurn } from "./gomoku-engine";
 import { createCompletedRecord, loadGomokuHistory, recordCompletedGame, type GomokuGameRecord } from "./gomoku-history";
 import { GomokuBoard } from "./GomokuBoard";
 import { GomokuHistory } from "./GomokuHistory";
 import { GomokuSetup } from "./GomokuSetup";
-import { otherStone, type BoardSize, type Coord, type GomokuConfig, type GomokuState } from "./gomoku-types";
+import { coordKey, otherStone, type BoardSize, type Coord, type GomokuConfig, type GomokuState } from "./gomoku-types";
 
 type Screen = "setup" | "game" | "history";
 type PendingAction = "restart" | "switch-start" | "setup";
@@ -24,6 +24,7 @@ export function GomokuGame() {
   const [thinking, setThinking] = useState(false);
   const [blinking, setBlinking] = useState(false);
   const [storageNotice, setStorageNotice] = useState("");
+  const [announcement, setAnnouncement] = useState("Hãy thiết lập người chơi để bắt đầu.");
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [matchKey, setMatchKey] = useState(0);
   const aiController = useRef<AbortController | null>(null);
@@ -62,26 +63,34 @@ export function GomokuGame() {
 
   const finishIfNeeded = useCallback((next: GomokuState, currentConfig: GomokuConfig) => {
     if (!next.winner && !next.draw) return;
-    if (next.winner) beginWinFeedback();
+    if (next.winner) {
+      beginWinFeedback();
+      const winningPlayer = currentConfig.players.find((player) => player.id === next.winner?.stone);
+      setAnnouncement(`${winningPlayer?.name ?? "Người chơi"} thắng với năm quân liên tiếp.`);
+    } else {
+      setAnnouncement("Bàn cờ đã kín. Ván cờ hòa.");
+    }
     const stored = recordCompletedGame(createCompletedRecord(currentConfig, next));
     setHistory(stored.records);
     setStorageNotice(stored.saved ? "" : "Ván cờ đã kết thúc nhưng thiết bị không thể lưu vào lịch sử.");
   }, [beginWinFeedback]);
 
   useEffect(() => {
-    if (!game || !config || config.mode !== "computer" || game.turn !== "p2" || game.winner || game.draw) return;
+    if (screen !== "game" || !game || !config || config.mode !== "computer" || game.turn !== "p2" || game.winner || game.draw) return;
     const controller = new AbortController();
     aiController.current?.abort();
     aiController.current = controller;
     const snapshot = game;
     const timer = window.setTimeout(() => {
       setThinking(true);
+      setAnnouncement("Máy đang suy nghĩ.");
       requestComputerMove(snapshot, config.difficulty ?? "medium", { signal: controller.signal })
         .then((coord) => {
           if (controller.signal.aborted) return;
           const next = playMove(snapshot, coord);
           if (next === snapshot) throw new Error("Computer worker returned an illegal move");
           finishIfNeeded(next, config);
+          if (!next.winner && !next.draw) setAnnouncement(`${config.players[0].name} đến lượt.`);
           setThinking(false);
           setGame((current) => current === snapshot ? next : current);
         })
@@ -91,6 +100,7 @@ export function GomokuGame() {
           const fallback = findLegalFallbackMove(snapshot);
           const next = fallback ? playMove(snapshot, fallback) : { ...snapshot, draw: true };
           finishIfNeeded(next, config);
+          if (!next.winner && !next.draw) setAnnouncement(`${config.players[0].name} đến lượt.`);
           setThinking(false);
           setGame((current) => current === snapshot ? next : current);
         });
@@ -100,7 +110,7 @@ export function GomokuGame() {
       controller.abort();
       if (aiController.current === controller) aiController.current = null;
     };
-  }, [game, config, finishIfNeeded]);
+  }, [screen, game, config, finishIfNeeded]);
 
   function start(nextConfig: GomokuConfig) {
     aiController.current?.abort();
@@ -109,6 +119,8 @@ export function GomokuGame() {
     setThinking(false);
     setBlinking(false);
     setStorageNotice("");
+    const firstPlayer = nextConfig.players.find((player) => player.id === nextConfig.startingPlayer);
+    setAnnouncement(`${firstPlayer?.name ?? "Người chơi"} đi trước.`);
     setPendingAction(null);
     setMatchKey((value) => value + 1);
     setScreen("game");
@@ -116,9 +128,24 @@ export function GomokuGame() {
 
   function play(coord: Coord) {
     if (!game || !config || thinking || game.winner || game.draw || (config.mode === "computer" && game.turn === "p2")) return;
+    if (!isInBounds(game, coord)) {
+      setAnnouncement("Ô này nằm ngoài bàn cờ.");
+      return;
+    }
+    if (game.cells[coordKey(coord)]) {
+      setAnnouncement("Ô này đã có quân. Hãy chọn một ô trống.");
+      return;
+    }
     const next = playMove(game, coord);
-    if (next === game) return;
+    if (next === game) {
+      setAnnouncement("Nước đi này không hợp lệ.");
+      return;
+    }
     finishIfNeeded(next, config);
+    if (!next.winner && !next.draw) {
+      const nextPlayer = config.players.find((player) => player.id === next.turn);
+      setAnnouncement(`${nextPlayer?.name ?? "Người chơi"} đến lượt.`);
+    }
     setGame(next);
   }
 
@@ -126,8 +153,17 @@ export function GomokuGame() {
     if (!game || !game.moves.length || game.winner || game.draw) return;
     aiController.current?.abort();
     const plies = config?.mode === "computer" && game.moves[game.moves.length - 1]?.stone === "p2" ? 2 : 1;
-    setGame(undoTurn(game, plies));
+    const next = undoTurn(game, plies);
+    setGame(next);
+    const nextPlayer = config?.players.find((player) => player.id === next.turn);
+    setAnnouncement(`Đã hoàn tác. ${nextPlayer?.name ?? "Người chơi"} đến lượt.`);
     setThinking(false);
+  }
+
+  function openHistory() {
+    aiController.current?.abort();
+    setThinking(false);
+    setScreen("history");
   }
 
   function performAction(action: PendingAction) {
@@ -192,7 +228,7 @@ export function GomokuGame() {
 
         {storageNotice ? <p className="gomoku-storage-notice" role="status">{storageNotice}</p> : null}
 
-        {screen === "setup" ? <GomokuSetup key={childName || "loading"} childName={childName} onStart={start} onOpenHistory={() => setScreen("history")} historyCount={history.length} /> : null}
+        {screen === "setup" ? <GomokuSetup key={childName || "loading"} childName={childName} onStart={start} onOpenHistory={openHistory} historyCount={history.length} /> : null}
         {screen === "history" ? <GomokuHistory records={history} onBack={() => setScreen(config ? "game" : "setup")} onRecordsChange={setHistory} /> : null}
         {screen === "game" && game && config ? (
           <section className="gomoku-game-layout">
@@ -213,11 +249,14 @@ export function GomokuGame() {
                 <button type="button" onClick={undo} disabled={!game.moves.length || Boolean(game.winner) || game.draw || thinking}>↶ Hoàn tác</button>
                 <button type="button" onClick={() => requestAction("restart")}>↻ Chơi lại</button>
                 <button type="button" onClick={() => requestAction("switch-start")}>⇄ Đổi người đi trước</button>
-                <button type="button" onClick={() => setScreen("history")}>☷ Lịch sử</button>
+                <button type="button" onClick={openHistory}>☷ Lịch sử</button>
                 <button type="button" className="secondary" onClick={() => requestAction("setup")}>Thay đội hình</button>
               </div>
             </aside>
-            <GomokuBoard key={matchKey} state={game} players={config.players} disabled={thinking || Boolean(game.winner) || game.draw || (config.mode === "computer" && game.turn === "p2")} blinking={blinking} onPlay={play} onExpand={(size: BoardSize) => setGame((current) => current ? expandBoard(current, size) : current)} />
+            <div className="gomoku-board-column">
+              <GomokuBoard key={matchKey} state={game} players={config.players} disabled={thinking || Boolean(game.winner) || game.draw || (config.mode === "computer" && game.turn === "p2")} blinking={blinking} onPlay={play} onExpand={(size: BoardSize) => setGame((current) => current ? expandBoard(current, size) : current)} />
+              <p className="gomoku-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
+            </div>
           </section>
         ) : null}
       </main>

@@ -20,7 +20,7 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [focusCoord, setFocusCoord] = useState<Coord>(() => {
     const center = Math.floor(state.size / 2);
-    return [center, center];
+    return [state.origin[0] + center, state.origin[1] + center];
   });
   const pointers = useRef(new Map<number, Point>());
   const gesture = useRef<{ startPan: Point; startPoint: Point; pinchDistance?: number; startZoom: number } | null>(null);
@@ -31,9 +31,13 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
 
   const cells = useMemo(() => {
     const result: Coord[] = [];
-    for (let y = 0; y < state.size; y += 1) for (let x = 0; x < state.size; x += 1) result.push([x, y]);
+    for (let row = 0; row < state.size; row += 1) {
+      for (let column = 0; column < state.size; column += 1) {
+        result.push([state.origin[0] + column, state.origin[1] + row]);
+      }
+    }
     return result;
-  }, [state.size]);
+  }, [state.origin, state.size]);
 
   function updateZoom(nextZoom: number) {
     const next = clampZoom(nextZoom);
@@ -92,7 +96,12 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
   }
 
   function moveFocus(coord: Coord, dx: number, dy: number) {
-    const next: Coord = [Math.min(state.size - 1, Math.max(0, coord[0] + dx)), Math.min(state.size - 1, Math.max(0, coord[1] + dy))];
+    const maxX = state.origin[0] + state.size - 1;
+    const maxY = state.origin[1] + state.size - 1;
+    const next: Coord = [
+      Math.min(maxX, Math.max(state.origin[0], coord[0] + dx)),
+      Math.min(maxY, Math.max(state.origin[1], coord[1] + dy)),
+    ];
     setFocusCoord(next);
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLButtonElement>(`[data-gomoku-key="${coordKey(next)}"]`)?.focus({ preventScroll: true });
@@ -102,10 +111,10 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
   const line = winning.length === 5 ? (() => {
     const first = winning[0];
     const last = winning[4];
-    const x1 = first[0] * CELL_SIZE + CELL_SIZE / 2;
-    const y1 = first[1] * CELL_SIZE + CELL_SIZE / 2;
-    const x2 = last[0] * CELL_SIZE + CELL_SIZE / 2;
-    const y2 = last[1] * CELL_SIZE + CELL_SIZE / 2;
+    const x1 = (first[0] - state.origin[0]) * CELL_SIZE + CELL_SIZE / 2;
+    const y1 = (first[1] - state.origin[1]) * CELL_SIZE + CELL_SIZE / 2;
+    const x2 = (last[0] - state.origin[0]) * CELL_SIZE + CELL_SIZE / 2;
+    const y2 = (last[1] - state.origin[1]) * CELL_SIZE + CELL_SIZE / 2;
     return { left: x1, top: y1, width: Math.hypot(x2 - x1, y2 - y1), transform: `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)` };
   })() : null;
 
@@ -140,6 +149,8 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
             const stone = state.cells[coordKey(coord)];
             const isLatest = latest ? sameCoord(latest, coord) : false;
             const isWinning = winning.some((item) => sameCoord(item, coord));
+            const column = coord[0] - state.origin[0] + 1;
+            const row = coord[1] - state.origin[1] + 1;
             return (
               <button
                 type="button"
@@ -149,7 +160,7 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
                 data-testid={isWinning ? "winning-stone" : undefined}
                 tabIndex={sameCoord(focusCoord, coord) ? 0 : -1}
                 className={`gomoku-cell${isLatest ? " is-latest" : ""}${isWinning ? " is-winning" : ""}${isWinning && blinking ? " is-blinking" : ""}`}
-                aria-label={`Cột ${coord[0] + 1}, hàng ${coord[1] + 1}${stone ? `, ${playerByStone[stone].name}` : ", còn trống"}`}
+                aria-label={`Cột ${column}, hàng ${row}${stone ? `, ${playerByStone[stone].name}` : ", còn trống"}`}
                 aria-disabled={disabled || Boolean(stone)}
                 onClick={() => choose(coord)}
                 onFocus={() => setFocusCoord(coord)}

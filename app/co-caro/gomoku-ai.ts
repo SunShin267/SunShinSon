@@ -16,7 +16,7 @@ function assertActive(signal?: AbortSignal) {
 function nearbyCandidates(state: GomokuState) {
   if (!state.moves.length) {
     const center = Math.floor(state.size / 2);
-    return [[center, center] as Coord];
+    return [[state.origin[0] + center, state.origin[1] + center] as Coord];
   }
 
   const keys = new Set<string>();
@@ -74,8 +74,9 @@ function rankCandidates(state: GomokuState, stone: Stone) {
       if (isWinningMove(state, coord, opponent)) return { coord, score: 500_000 };
       const attack = directionalPotential(state, coord, stone);
       const defense = directionalPotential(state, coord, opponent);
-      const center = (state.size - 1) / 2;
-      const distance = Math.abs(coord[0] - center) + Math.abs(coord[1] - center);
+      const centerX = state.origin[0] + (state.size - 1) / 2;
+      const centerY = state.origin[1] + (state.size - 1) / 2;
+      const distance = Math.abs(coord[0] - centerX) + Math.abs(coord[1] - centerY);
       return { coord, score: attack + defense * 0.88 - distance * 0.05 };
     })
     .sort((a, b) => b.score - a.score);
@@ -84,6 +85,38 @@ function rankCandidates(state: GomokuState, stone: Stone) {
 function terminalScore(state: GomokuState, computer: Stone, depth: number) {
   if (!state.winner) return 0;
   return state.winner.stone === computer ? 10_000_000 + depth : -10_000_000 - depth;
+}
+
+function positionScore(state: GomokuState, computer: Stone) {
+  const attack = rankCandidates(state, computer)[0]?.score ?? 0;
+  const threat = rankCandidates(state, otherStone(computer))[0]?.score ?? 0;
+  return attack - threat * 0.92;
+}
+
+function scoreAfterOpponentReply(
+  stateAfterMove: GomokuState,
+  computer: Stone,
+  deadline: number,
+  signal?: AbortSignal,
+) {
+  if (stateAfterMove.winner || stateAfterMove.draw) return terminalScore(stateAfterMove, computer, 1);
+  const replies = rankCandidates(stateAfterMove, stateAfterMove.turn).slice(0, 6);
+  if (!replies.length) return positionScore(stateAfterMove, computer);
+
+  let worstReply = Infinity;
+  let evaluated = 0;
+  for (const reply of replies) {
+    assertActive(signal);
+    // Always inspect one legal reply, then respect the bounded time budget.
+    if (evaluated > 0 && performance.now() >= deadline) break;
+    const stateAfterReply = playMove(stateAfterMove, reply.coord, 0);
+    const score = stateAfterReply.winner || stateAfterReply.draw
+      ? terminalScore(stateAfterReply, computer, 0)
+      : positionScore(stateAfterReply, computer);
+    worstReply = Math.min(worstReply, score);
+    evaluated += 1;
+  }
+  return Number.isFinite(worstReply) ? worstReply : positionScore(stateAfterMove, computer);
 }
 
 function minimax(
@@ -99,9 +132,7 @@ function minimax(
   if (performance.now() >= deadline) throw new DOMException("Computer search deadline", "TimeoutError");
   if (state.winner || state.draw) return terminalScore(state, computer, depth);
   if (depth === 0) {
-    const attack = rankCandidates(state, computer)[0]?.score ?? 0;
-    const threat = rankCandidates(state, otherStone(computer))[0]?.score ?? 0;
-    return attack - threat * 0.92;
+    return positionScore(state, computer);
   }
 
   const maximizing = state.turn === computer;
@@ -145,7 +176,22 @@ export async function chooseComputerMove(
   } else if (immediateWin || immediateBlock) {
     choice = (immediateWin ?? immediateBlock)!.coord;
   } else if (level === "medium") {
-    choice = ranked.slice(0, Math.min(4, ranked.length))[Math.floor(random() * Math.min(4, ranked.length))].coord;
+    const deadline = performance.now() + Math.min(450, Math.max(120, options.budgetMs ?? 240));
+    let bestCoord = ranked[0].coord;
+    let bestScore = -Infinity;
+    let evaluated = 0;
+    for (const candidate of ranked.slice(0, 8)) {
+      assertActive(signal);
+      if (evaluated > 0 && performance.now() >= deadline) break;
+      const stateAfterMove = playMove(state, candidate.coord, 0);
+      const score = scoreAfterOpponentReply(stateAfterMove, state.turn, deadline, signal) + candidate.score * 0.08;
+      if (score > bestScore) {
+        bestCoord = candidate.coord;
+        bestScore = score;
+      }
+      evaluated += 1;
+    }
+    choice = bestCoord;
   } else {
     const deadline = performance.now() + Math.min(900, Math.max(120, options.budgetMs ?? 700));
     let bestCoord = ranked[0].coord;

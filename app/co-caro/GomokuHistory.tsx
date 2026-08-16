@@ -48,7 +48,7 @@ export function GomokuHistory({ records, onBack, onRecordsChange }: GomokuHistor
   }, [records]);
 
   const replayState = selected
-    ? replayMoves({ startingPlayer: selected.startingPlayer }, selected.moves.slice(0, replayIndex), selected.size)
+    ? replayMoves({ startingPlayer: selected.startingPlayer }, selected.moves.slice(0, replayIndex), selected.size, selected.origin ?? [0, 0])
     : null;
 
   function showRecord(record: GomokuGameRecord, replay: boolean) {
@@ -136,7 +136,8 @@ export function GomokuHistory({ records, onBack, onRecordsChange }: GomokuHistor
               <div className="gomoku-snapshot-wrap">
                 <div className="gomoku-snapshot" style={{ gridTemplateColumns: `repeat(${selected.size}, 1fr)` }} role="img" aria-label={`Bàn cờ ở nước ${replayIndex}`}>
                   {Array.from({ length: selected.size * selected.size }, (_, index) => {
-                    const coord = [index % selected.size, Math.floor(index / selected.size)] as const;
+                    const origin = selected.origin ?? [0, 0];
+                    const coord = [origin[0] + index % selected.size, origin[1] + Math.floor(index / selected.size)] as const;
                     const stone = replayState.cells[coordKey(coord)];
                     const player = stone ? selected.players.find((item) => item.id === stone) : null;
                     const winning = selected.winningCells.some((item) => item[0] === coord[0] && item[1] === coord[1]) && replayIndex === selected.moves.length;

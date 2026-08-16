@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Color, Square } from "chess.js";
 import { GameShell } from "../components/GameShell";
 import { readChildName } from "../lib/child-session";
+import { internalPath } from "../lib/navigation";
 import { ChessBoard } from "./ChessBoard";
 import { formatClock, pauseClock, createClock, switchClock, tickClock, type ClockState } from "./chess-clock";
 import { checkedKingSquare, createChessGame, getChessStatus, hasMatingMaterial, hydrateChess, lastMove, legalMoves, makeChessMove, type ChessGame as ChessGameState, type ChessMoveInput, type PromotionPiece } from "./chess-game";
@@ -52,6 +53,10 @@ export function ChessGame() {
   const promotionDialogRef = useRef<HTMLDivElement | null>(null);
   const savedRef = useRef(false);
   const startedAt = useRef(new Date().toISOString());
+  const gameRef = useRef<ChessGameState | null>(null);
+  const clockRef = useRef<ClockState | null>(null);
+  const finalRef = useRef<FinalState | null>(null);
+  const gameVisible = tab === "play" && screen === "game";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -66,6 +71,10 @@ export function ChessGame() {
     clientRef.current?.dispose();
   }, []);
 
+  useEffect(() => { gameRef.current = game; }, [game]);
+  useEffect(() => { clockRef.current = clock; }, [clock]);
+  useEffect(() => { finalRef.current = finalState; }, [finalState]);
+
   useEffect(() => {
     if (!promotion) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -76,11 +85,23 @@ export function ChessGame() {
   const finishGame = useCallback((finalGame: ChessGameState, result: FinalState["result"], reason: string) => {
     if (!config || savedRef.current) return;
     savedRef.current = true;
+    finalRef.current = { result, reason };
     engineController.current?.abort();
     clientRef.current?.cancel();
     setThinking(false);
+    setPromotion(null);
     setFinalState({ result, reason });
-    setClock((current) => current ? pauseClock(current, performance.now()) : null);
+    setClock((current) => {
+      const next = current ? pauseClock(current, performance.now()) : null;
+      clockRef.current = next;
+      return next;
+    });
+    const winnerName = result === "white" ? config.players.white : result === "black" ? config.players.black : "";
+    if (reason === "checkmate") setAnnouncement(`Chiếu hết. ${winnerName} thắng.`);
+    else if (reason === "timeout") setAnnouncement(`Hết giờ. ${winnerName} thắng.`);
+    else if (reason === "timeout-draw") setAnnouncement("Hết giờ. Ván cờ hòa vì đối thủ không đủ quân chiếu hết.");
+    else if (result === "draw") setAnnouncement(`${reasonLabels[reason] ?? "Ván cờ hòa"}.`);
+    else setAnnouncement(`${winnerName} thắng. ${reasonLabels[reason] ?? reason}.`);
     const record: ChessGameRecord = {
       id: typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
       startedAt: startedAt.current,
@@ -102,19 +123,75 @@ export function ChessGame() {
     if (!stored.saved) setStorageNotice("Ván cờ đã kết thúc nhưng thiết bị không thể lưu vào lịch sử.");
   }, [config]);
 
-  const commitMove = useCallback((source: ChessGameState, input: ChessMoveInput) => {
-    const next = makeChessMove(source, input);
-    setGame((current) => current === source ? next : current);
-    setSelected(null);
-    setAnnouncement(`Nước ${next.san.at(-1)} đã được thực hiện.`);
-    setClock((current) => current ? switchClock(current, performance.now()) : null);
-    const status = getChessStatus(next);
-    if (status.gameOver && status.result && status.reason) finishGame(next, status.result, status.reason);
-    return next;
+  const finishTimedOutGame = useCallback((currentGame: ChessGameState, expired: Color) => {
+    const winner: Color = expired === "w" ? "b" : "w";
+    if (hasMatingMaterial(currentGame, winner)) finishGame(currentGame, winner === "w" ? "white" : "black", "timeout");
+    else finishGame(currentGame, "draw", "timeout-draw");
   }, [finishGame]);
 
+  const commitMove = useCallback((source: ChessGameState, input: ChessMoveInput) => {
+    if (gameRef.current !== source || savedRef.current || finalRef.current || getChessStatus(source).gameOver) return null;
+    const now = performance.now();
+    const currentClock = clockRef.current;
+    const runningClock = currentClock && !currentClock.active && !currentClock.expired && gameVisible
+      ? { ...currentClock, active: getChessStatus(source).turn, lastTick: now }
+      : currentClock;
+    const tickedClock = runningClock ? tickClock(runningClock, now) : null;
+    if (tickedClock?.expired) {
+      clockRef.current = tickedClock;
+      setClock(tickedClock);
+      finishTimedOutGame(source, tickedClock.expired);
+      return null;
+    }
+    const next = makeChessMove(source, input);
+    gameRef.current = next;
+    setGame((current) => current === source ? next : current);
+    setSelected(null);
+    if (tickedClock) {
+      const switchedClock = switchClock(tickedClock, now);
+      clockRef.current = switchedClock;
+      setClock(switchedClock);
+    }
+    const status = getChessStatus(next);
+    if (status.gameOver && status.result && status.reason) finishGame(next, status.result, status.reason);
+    else if (status.check) setAnnouncement("Chiếu Vua. Hãy bảo vệ Vua đang bị chiếu.");
+    else {
+      const nextPlayer = config ? (status.turn === "w" ? config.players.white : config.players.black) : "Người chơi";
+      setAnnouncement(`${next.san.at(-1)}. ${nextPlayer} đến lượt.`);
+    }
+    return next;
+  }, [config, finishGame, finishTimedOutGame, gameVisible]);
+
   useEffect(() => {
-    if (!game || !config || config.mode !== "computer" || finalState || engineError) return;
+    if (!game || !config || finalState) return;
+    const now = performance.now();
+    if (!gameVisible) {
+      engineController.current?.abort();
+      clientRef.current?.cancel();
+      const timer = window.setTimeout(() => {
+        setThinking(false);
+        setClock((current) => {
+          const next = current ? pauseClock(current, now) : null;
+          clockRef.current = next;
+          return next;
+        });
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (engineError) return;
+    const timer = window.setTimeout(() => {
+      setClock((current) => {
+        if (!current || current.expired) return current;
+        const next = { ...current, active: getChessStatus(game).turn, lastTick: now };
+        clockRef.current = next;
+        return next;
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [gameVisible, game, config, finalState, engineError]);
+
+  useEffect(() => {
+    if (!gameVisible || !game || !config || config.mode !== "computer" || finalState || engineError) return;
     const status = getChessStatus(game);
     if (status.turn === config.humanColor) return;
     const controller = new AbortController();
@@ -149,39 +226,45 @@ export function ChessGame() {
         });
     }, 0);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [game, config, finalState, engineError, engineAttempt, commitMove]);
+  }, [gameVisible, game, config, finalState, engineError, engineAttempt, commitMove]);
 
   useEffect(() => {
-    if (!config?.clockInitialMs || finalState || !game) return;
-    const timer = window.setInterval(() => setClock((current) => current ? tickClock(current, performance.now()) : null), 250);
+    if (!gameVisible || !config?.clockInitialMs || finalState || !game) return;
+    const timer = window.setInterval(() => setClock((current) => {
+      const next = current ? tickClock(current, performance.now()) : null;
+      clockRef.current = next;
+      return next;
+    }), 250);
     return () => window.clearInterval(timer);
-  }, [config?.clockInitialMs, finalState, game]);
+  }, [gameVisible, config?.clockInitialMs, finalState, game]);
 
   useEffect(() => {
     if (!clock?.expired || finalState || !game) return;
     const timer = window.setTimeout(() => {
-      const winner: Color = clock.expired === "w" ? "b" : "w";
-      if (hasMatingMaterial(game, winner)) finishGame(game, winner === "w" ? "white" : "black", "timeout");
-      else finishGame(game, "draw", "timeout-draw");
+      finishTimedOutGame(game, clock.expired!);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [clock?.expired, finalState, game, finishGame]);
+  }, [clock?.expired, finalState, game, finishTimedOutGame]);
 
   function start(nextConfig: ChessConfig) {
     engineController.current?.abort();
     clientRef.current?.dispose();
     clientRef.current = null;
     const next = createChessGame();
+    const nextClock = nextConfig.clockInitialMs ? createClock(nextConfig.clockInitialMs, performance.now()) : null;
     setConfig(nextConfig);
     setGame(next);
+    gameRef.current = next;
     setOrientation(nextConfig.orientation);
     setSelected(null);
     setPromotion(null);
     setFinalState(null);
+    finalRef.current = null;
     setEngineError("");
     setStorageNotice("");
     setThinking(false);
-    setClock(nextConfig.clockInitialMs ? createClock(nextConfig.clockInitialMs, performance.now()) : null);
+    setClock(nextClock);
+    clockRef.current = nextClock;
     setAnnouncement(`${nextConfig.players.white} cầm quân Trắng đi trước.`);
     savedRef.current = false;
     startedAt.current = new Date().toISOString();
@@ -189,7 +272,7 @@ export function ChessGame() {
   }
 
   function chooseSquare(square: Square) {
-    if (!game || !config || finalState || thinking || engineError) return;
+    if (!game || !config || finalState || savedRef.current || thinking || engineError) return;
     const chess = hydrateChess(game);
     const status = getChessStatus(game);
     if (config.mode === "computer" && status.turn !== config.humanColor) return;
@@ -211,16 +294,23 @@ export function ChessGame() {
   }
 
   function promote(piece: PromotionPiece) {
-    if (!promotion || !game) return;
+    if (!promotion || !game || savedRef.current || finalRef.current || getChessStatus(game).gameOver) {
+      setPromotion(null);
+      return;
+    }
     commitMove(game, { ...promotion, promotion: piece });
-    setPromotion(null);
+    if (!finalRef.current) setPromotion(null);
   }
 
   function retryEngine() {
     clientRef.current?.dispose();
     clientRef.current = null;
     setEngineError("");
-    if (game) setClock((current) => current ? { ...current, active: getChessStatus(game).turn, lastTick: performance.now() } : null);
+    if (game) setClock((current) => {
+      const next = current ? { ...current, active: getChessStatus(game).turn, lastTick: performance.now() } : null;
+      clockRef.current = next;
+      return next;
+    });
     setEngineAttempt((value) => value + 1);
   }
 
@@ -230,7 +320,11 @@ export function ChessGame() {
     clientRef.current = null;
     setThinking(false);
     setEngineError("");
-    if (game) setClock((current) => current ? { ...current, active: getChessStatus(game).turn, lastTick: performance.now() } : null);
+    if (game) setClock((current) => {
+      const next = current ? { ...current, active: getChessStatus(game).turn, lastTick: performance.now() } : null;
+      clockRef.current = next;
+      return next;
+    });
     setConfig((current) => current ? { ...current, mode: "local", difficulty: undefined } : current);
     setAnnouncement("Đã chuyển sang chế độ hai người. Người đang tới lượt có thể đi.");
   }
@@ -255,10 +349,10 @@ export function ChessGame() {
   const activeName = status && config ? (status.turn === "w" ? config.players.white : config.players.black) : "";
   const legalTargets = useMemo(() => game && selected ? legalMoves(game, selected).map((move) => move.to) : [], [game, selected]);
   const recentMove = game ? lastMove(game) : null;
-  const inProgress = Boolean(screen === "game" && game && !finalState);
+  const inProgress = Boolean(game && !finalState);
   const resultText = finalState ? finalState.result === "draw" ? "Hai bên hòa nhau" : `${finalState.result === "white" ? config?.players.white : config?.players.black} thắng` : "";
 
-  return <GameShell isGameInProgress={inProgress} onLeaveGame={() => { engineController.current?.abort(); clientRef.current?.dispose(); }} helpContent={<div><p>Chọn <strong>Học quân</strong> để làm quen sáu quân cờ, <strong>Học luật</strong> để xem các tình huống đặc biệt, hoặc <strong>Chơi cờ</strong> để bắt đầu một ván.</p><p>Trong ván, chọn quân rồi chọn một ô có chấm tròn. Các nước đi đều được kiểm tra bởi luật cờ đầy đủ.</p></div>}>
+  return <GameShell isGameInProgress={inProgress} onLeaveGame={() => { engineController.current?.abort(); clientRef.current?.dispose(); }} helpContent={<div><p>Chọn <strong>Học quân</strong> để làm quen sáu quân cờ, <strong>Học luật</strong> để xem các tình huống đặc biệt, hoặc <strong>Chơi cờ</strong> để bắt đầu một ván.</p><p>Trong ván, chọn quân rồi chọn một ô có chấm tròn. Các nước đi đều được kiểm tra bởi luật cờ đầy đủ.</p><p>Đối thủ máy dùng Stockfish 18. Xem <a href={internalPath("/engines/stockfish/SOURCE.md")}>nguồn và ghi công</a> cùng <a href={internalPath("/engines/stockfish/COPYING.txt")}>giấy phép GNU GPL v3</a>.</p></div>}>
     <main className="chess-page">
       <header className="chess-hero"><div><p className="kicker">Học chiến thuật từng nước</p><h1>Cờ vua</h1><p>Gặp gỡ sáu quân cờ, hiểu luật và thử tài trên bàn cờ thật.</p></div><span aria-hidden="true">♞</span></header>
       <nav className="chess-main-tabs" aria-label="Khu vực cờ vua">{(["pieces", "rules", "play"] as const).map((item) => <button key={item} type="button" aria-current={tab === item ? "page" : undefined} onClick={() => setTab(item)}><span aria-hidden="true">{item === "pieces" ? "♟" : item === "rules" ? "📖" : "♜"}</span>{item === "pieces" ? "Học quân" : item === "rules" ? "Học luật" : "Chơi cờ"}</button>)}</nav>
@@ -276,7 +370,7 @@ export function ChessGame() {
         <div className="chess-board-column">
           {engineError ? <div className="chess-engine-error" role="alert"><div><strong>Máy chơi cờ chưa sẵn sàng</strong><p>{engineError}</p></div><button type="button" onClick={retryEngine}>Thử lại</button><button type="button" onClick={switchToLocal}>Chuyển sang hai người</button></div> : null}
           <ChessBoard game={game} orientation={orientation} selected={selected} legalTargets={legalTargets} lastMove={recentMove} checkedKing={checkedKingSquare(game)} disabled={Boolean(finalState) || thinking || Boolean(engineError) || (config.mode === "computer" && status.turn !== config.humanColor)} onSquare={chooseSquare} />
-          <p className="chess-announcement" role="status" aria-live="polite">{announcement}</p>
+          <p className="chess-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
           {storageNotice ? <p className="chess-storage-notice" role="status">{storageNotice}</p> : null}
         </div>
         <aside className="chess-moves"><div className="chess-moves-heading"><strong>Biên bản ván cờ</strong><span>{game.san.length} nước</span></div><ol>{Array.from({ length: Math.ceil(game.san.length / 2) }, (_, index) => <li key={index}><b>{index + 1}.</b><span>{game.san[index * 2] ?? ""}</span><span>{game.san[index * 2 + 1] ?? ""}</span></li>)}</ol>{!game.san.length ? <p>Những nước đi ký hiệu SAN sẽ xuất hiện tại đây.</p> : null}</aside>

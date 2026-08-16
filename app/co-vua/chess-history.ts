@@ -34,13 +34,18 @@ function isMove(value: unknown): value is ChessMoveInput {
 function isRecord(value: unknown): value is ChessGameRecord {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<ChessGameRecord>;
-  const validShape = typeof record.id === "string" && typeof record.startedAt === "string" && typeof record.completedAt === "string" &&
-    Boolean(record.players && typeof record.players.white === "string" && typeof record.players.black === "string") &&
-    (record.mode === "local" || record.mode === "computer") && ["white", "black", "draw"].includes(record.result ?? "") &&
-    typeof record.reason === "string" && (record.clockInitialMs === null || typeof record.clockInitialMs === "number") &&
+  const boundedText = (text: unknown, maximum: number) => typeof text === "string" && text.trim().length > 0 && text.length <= maximum;
+  const validDate = (text: unknown) => typeof text === "string" && text.length <= 40 && Number.isFinite(Date.parse(text));
+  const validClock = record.clockInitialMs === null || (typeof record.clockInitialMs === "number" && Number.isInteger(record.clockInitialMs) && record.clockInitialMs >= 60_000 && record.clockInitialMs <= 86_400_000);
+  const validShape = boundedText(record.id, 120) && validDate(record.startedAt) && validDate(record.completedAt) &&
+    Boolean(record.players && boundedText(record.players.white, 60) && boundedText(record.players.black, 60)) &&
+    (record.mode === "local" || record.mode === "computer") &&
+    (record.difficulty === undefined || ["easy", "medium", "hard"].includes(record.difficulty)) &&
+    ["white", "black", "draw"].includes(record.result ?? "") &&
+    boundedText(record.reason, 160) && validClock &&
     typeof record.pgn === "string" && record.pgn.length < 200_000 && Array.isArray(record.moves) && record.moves.length <= 1000 && record.moves.every(isMove) &&
-    Array.isArray(record.san) && record.san.length === record.moves.length && record.san.every((move) => typeof move === "string") &&
-    typeof record.initialFen === "string" && typeof record.finalFen === "string";
+    Array.isArray(record.san) && record.san.length === record.moves.length && record.san.every((move) => boundedText(move, 32)) &&
+    boundedText(record.initialFen, 200) && boundedText(record.finalFen, 200);
   if (!validShape) return false;
   const candidate = record as ChessGameRecord;
 

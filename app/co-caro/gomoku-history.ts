@@ -24,6 +24,8 @@ export type GomokuGameRecord = {
   startingPlayer: Stone;
   result: Stone | "draw";
   size: BoardSize;
+  /** Absent only on records written before centered board expansion shipped. */
+  origin?: Coord;
   moves: readonly Move[];
   winningCells: readonly Coord[];
 };
@@ -87,16 +89,18 @@ function isRecord(value: unknown): value is GomokuGameRecord {
     && (value.startingPlayer === "p1" || value.startingPlayer === "p2")
     && (value.result === "p1" || value.result === "p2" || value.result === "draw")
     && (value.size === 20 || value.size === 30 || value.size === 40 || value.size === 50)
+    && (value.origin === undefined || isCoord(value.origin))
     && Array.isArray(value.moves) && value.moves.length <= value.size * value.size && value.moves.every(isMove)
     && Array.isArray(value.winningCells) && value.winningCells.length <= 5 && value.winningCells.every(isCoord);
   if (!validShape) return false;
 
   const record = value as GomokuGameRecord;
+  const origin = record.origin ?? [0, 0];
   const allCoordsFit = [...record.moves.map((move) => move.coord), ...record.winningCells]
-    .every(([x, y]) => x >= 0 && y >= 0 && x < record.size && y < record.size);
+    .every(([x, y]) => x >= origin[0] && y >= origin[1] && x < origin[0] + record.size && y < origin[1] + record.size);
   if (!allCoordsFit) return false;
 
-  const replay = replayMoves({ startingPlayer: record.startingPlayer }, record.moves, record.size);
+  const replay = replayMoves({ startingPlayer: record.startingPlayer }, record.moves, record.size, origin);
   if (replay.moves.length !== record.moves.length) return false;
   if (record.result === "draw") return replay.draw && record.winningCells.length === 0;
   return replay.winner?.stone === record.result
@@ -150,7 +154,7 @@ export function clearGomokuHistory() {
 
 export function createCompletedRecord(
   config: GomokuConfig,
-  state: { size: BoardSize; moves: readonly Move[]; winner: { stone: Stone; cells: readonly Coord[] } | null; draw: boolean },
+  state: { size: BoardSize; origin: Coord; moves: readonly Move[]; winner: { stone: Stone; cells: readonly Coord[] } | null; draw: boolean },
 ): GomokuGameRecord {
   return {
     id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -161,6 +165,7 @@ export function createCompletedRecord(
     startingPlayer: config.startingPlayer,
     result: state.winner?.stone ?? "draw",
     size: state.size,
+    origin: state.origin,
     moves: state.moves,
     winningCells: state.winner?.cells ?? [],
   };

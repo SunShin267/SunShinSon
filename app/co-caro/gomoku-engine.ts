@@ -13,15 +13,18 @@ import {
 const AXES: readonly Coord[] = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
 export function createGomokuGame(config: Pick<GomokuConfig, "startingPlayer">): GomokuState {
-  return { size: 20, cells: {}, moves: [], turn: config.startingPlayer, winner: null, draw: false };
+  return { size: 20, origin: [0, 0], cells: {}, moves: [], turn: config.startingPlayer, winner: null, draw: false };
 }
 
-export function isInBounds(size: BoardSize, [x, y]: Coord) {
-  return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < size && y < size;
+export function isInBounds(state: Pick<GomokuState, "size" | "origin">, [x, y]: Coord) {
+  const [originX, originY] = state.origin;
+  return Number.isInteger(x) && Number.isInteger(y)
+    && x >= originX && y >= originY
+    && x < originX + state.size && y < originY + state.size;
 }
 
 export function isLegalMove(state: GomokuState, coord: Coord) {
-  return !state.winner && !state.draw && isInBounds(state.size, coord) && !state.cells[coordKey(coord)];
+  return !state.winner && !state.draw && isInBounds(state, coord) && !state.cells[coordKey(coord)];
 }
 
 function lineFrom(state: GomokuState, origin: Coord, stone: Stone, [dx, dy]: Coord) {
@@ -95,8 +98,9 @@ export function replayMoves(
   config: Pick<GomokuConfig, "startingPlayer">,
   moves: readonly Move[],
   size: BoardSize = 20,
+  origin: Coord = [0, 0],
 ) {
-  let state = { ...createGomokuGame(config), size };
+  let state = { ...createGomokuGame(config), size, origin };
   for (const move of moves) {
     if (state.turn !== move.stone) break;
     const next = playMove(state, move.coord, move.playedAt);
