@@ -39,6 +39,7 @@ jobs:
         run: npm run build:pages
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
           NEXT_PUBLIC_QUIZ_PATH: ${{ steps.pages.outputs.base_path }}/do-vui-do-meo.html
 
       - name: Upload Pages artifact

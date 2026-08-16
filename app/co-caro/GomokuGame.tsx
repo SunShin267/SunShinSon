@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import { GameShell } from "../components/GameShell";
 import { readChildName } from "../lib/child-session";
 import { findLegalFallbackMove, requestComputerMove } from "./gomoku-ai-client";
@@ -23,10 +23,12 @@ export function GomokuGame() {
   const [history, setHistory] = useState<GomokuGameRecord[]>([]);
   const [thinking, setThinking] = useState(false);
   const [blinking, setBlinking] = useState(false);
+  const [storageNotice, setStorageNotice] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [matchKey, setMatchKey] = useState(0);
   const aiController = useRef<AbortController | null>(null);
   const blinkTimer = useRef<number | null>(null);
+  const pendingDialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -35,6 +37,16 @@ export function GomokuGame() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!pendingAction) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const timer = window.setTimeout(() => pendingDialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus(), 0);
+    return () => {
+      window.clearTimeout(timer);
+      previous?.focus();
+    };
+  }, [pendingAction]);
 
   useEffect(() => () => {
     aiController.current?.abort();
@@ -51,7 +63,9 @@ export function GomokuGame() {
   const finishIfNeeded = useCallback((next: GomokuState, currentConfig: GomokuConfig) => {
     if (!next.winner && !next.draw) return;
     if (next.winner) beginWinFeedback();
-    setHistory(recordCompletedGame(createCompletedRecord(currentConfig, next)));
+    const stored = recordCompletedGame(createCompletedRecord(currentConfig, next));
+    setHistory(stored.records);
+    setStorageNotice(stored.saved ? "" : "Ván cờ đã kết thúc nhưng thiết bị không thể lưu vào lịch sử.");
   }, [beginWinFeedback]);
 
   useEffect(() => {
@@ -94,6 +108,7 @@ export function GomokuGame() {
     setGame(createGomokuGame(nextConfig));
     setThinking(false);
     setBlinking(false);
+    setStorageNotice("");
     setPendingAction(null);
     setMatchKey((value) => value + 1);
     setScreen("game");
@@ -140,6 +155,25 @@ export function GomokuGame() {
     else performAction(action);
   }
 
+  function trapPendingDialogFocus(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      setPendingAction(null);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = Array.from(pendingDialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   const activePlayer = game && config ? config.players.find((player) => player.id === game.turn) : null;
   const winner = game?.winner && config ? config.players.find((player) => player.id === game.winner?.stone) : null;
   const inProgress = Boolean(game?.moves.length && !game.winner && !game.draw);
@@ -155,6 +189,8 @@ export function GomokuGame() {
           <div><p className="kicker">Năm quân thẳng hàng</p><h1>Cờ caro</h1><p>Quan sát, dự đoán và tạo một đường đi thật thông minh.</p></div>
           <span aria-hidden="true">⭕</span>
         </header>
+
+        {storageNotice ? <p className="gomoku-storage-notice" role="status">{storageNotice}</p> : null}
 
         {screen === "setup" ? <GomokuSetup key={childName || "loading"} childName={childName} onStart={start} onOpenHistory={() => setScreen("history")} historyCount={history.length} /> : null}
         {screen === "history" ? <GomokuHistory records={history} onBack={() => setScreen(config ? "game" : "setup")} onRecordsChange={setHistory} /> : null}
@@ -187,10 +223,10 @@ export function GomokuGame() {
       </main>
 
       {pendingAction ? (
-        <section className="game-overlay" role="dialog" aria-modal="true" aria-labelledby="gomoku-confirm-title">
-          <div className="game-dialog">
+        <section className="game-overlay" role="dialog" aria-modal="true" aria-labelledby="gomoku-confirm-title" aria-describedby="gomoku-confirm-description">
+          <div ref={pendingDialogRef} onKeyDown={trapPendingDialogFocus} className="game-dialog">
             <h2 id="gomoku-confirm-title">Bắt đầu lại ván cờ?</h2>
-            <p>Các nước đang chơi sẽ bị xóa và không được lưu vào lịch sử.</p>
+            <p id="gomoku-confirm-description">Các nước đang chơi sẽ bị xóa và không được lưu vào lịch sử.</p>
             <div className="game-dialog-actions"><button className="game-dialog-secondary" onClick={() => setPendingAction(null)}>Chơi tiếp</button><button className="game-dialog-primary" onClick={performPendingAction}>Đồng ý</button></div>
           </div>
         </section>

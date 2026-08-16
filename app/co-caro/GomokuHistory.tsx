@@ -25,6 +25,7 @@ export function GomokuHistory({ records, onBack, onRecordsChange }: GomokuHistor
   const selected = records.find((record) => record.id === selectedId) ?? null;
   const [replayIndex, setReplayIndex] = useState(selected?.moves.length ?? 0);
   const [playing, setPlaying] = useState(false);
+  const [storageNotice, setStorageNotice] = useState("");
 
   useEffect(() => {
     if (!playing || !selected) return;
@@ -58,7 +59,13 @@ export function GomokuHistory({ records, onBack, onRecordsChange }: GomokuHistor
 
   function removeRecord(record: GomokuGameRecord) {
     if (!window.confirm(`Xóa ván ${resultLabel(record)}?`)) return;
-    const next = deleteCompletedGame(record.id);
+    const result = deleteCompletedGame(record.id);
+    if (!result.saved) {
+      setStorageNotice("Thiết bị chưa thể xóa ván này. Lịch sử vẫn được giữ nguyên.");
+      return;
+    }
+    setStorageNotice("");
+    const next = result.records;
     onRecordsChange(next);
     if (selectedId === record.id) {
       setSelectedId(next[0]?.id ?? null);
@@ -74,13 +81,21 @@ export function GomokuHistory({ records, onBack, onRecordsChange }: GomokuHistor
         <div className="gomoku-heading-actions">
           {records.length ? <button className="gomoku-button danger" type="button" onClick={() => {
             if (!window.confirm("Xóa toàn bộ lịch sử cờ caro?")) return;
-            onRecordsChange(clearGomokuHistory());
+            const result = clearGomokuHistory();
+            if (!result.saved) {
+              setStorageNotice("Thiết bị chưa thể xóa lịch sử. Các ván vẫn được giữ nguyên.");
+              return;
+            }
+            setStorageNotice("");
+            onRecordsChange(result.records);
             setSelectedId(null);
             setPlaying(false);
           }}>Xóa tất cả</button> : null}
           <button className="gomoku-button secondary" type="button" onClick={onBack}>Quay lại</button>
         </div>
       </div>
+
+      {storageNotice ? <p className="gomoku-storage-notice" role="status">{storageNotice}</p> : null}
 
       {stats.length ? (
         <div className="gomoku-stats-grid">

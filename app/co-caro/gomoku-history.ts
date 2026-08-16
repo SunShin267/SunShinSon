@@ -1,4 +1,5 @@
 import { readVersionedStorage, removeVersionedStorage, writeVersionedStorage } from "../lib/versioned-storage";
+import { replayMoves } from "./gomoku-engine";
 import type {
   BoardSize,
   Coord,
@@ -53,34 +54,42 @@ function isCoord(value: unknown): value is Coord {
 function isPlayer(value: unknown): value is PlayerConfig {
   return isObject(value)
     && (value.id === "p1" || value.id === "p2")
-    && typeof value.name === "string"
-    && typeof value.color === "string"
-    && typeof value.piece === "string";
+    && typeof value.name === "string" && value.name.length > 0 && value.name.length <= 60
+    && typeof value.color === "string" && value.color.length <= 64
+    && typeof value.piece === "string" && value.piece.length <= 8;
 }
 
 function isMove(value: unknown): value is Move {
   return isObject(value)
     && isCoord(value.coord)
     && (value.stone === "p1" || value.stone === "p2")
-    && typeof value.playedAt === "number";
+    && typeof value.playedAt === "number" && Number.isFinite(value.playedAt);
 }
 
 function isRecord(value: unknown): value is GomokuGameRecord {
   if (!isObject(value)) return false;
-  return typeof value.id === "string"
-    && typeof value.completedAt === "string"
+  const validShape = typeof value.id === "string" && value.id.length <= 120
+    && typeof value.completedAt === "string" && Number.isFinite(Date.parse(value.completedAt))
     && (value.mode === "local" || value.mode === "computer")
     && (value.difficulty === undefined || value.difficulty === "easy" || value.difficulty === "medium" || value.difficulty === "hard")
     && Array.isArray(value.players) && value.players.length === 2 && value.players.every(isPlayer)
     && (value.startingPlayer === "p1" || value.startingPlayer === "p2")
     && (value.result === "p1" || value.result === "p2" || value.result === "draw")
     && (value.size === 20 || value.size === 30 || value.size === 40 || value.size === 50)
-    && Array.isArray(value.moves) && value.moves.every(isMove)
-    && Array.isArray(value.winningCells) && value.winningCells.every(isCoord);
-}
+    && Array.isArray(value.moves) && value.moves.length <= value.size * value.size && value.moves.every(isMove)
+    && Array.isArray(value.winningCells) && value.winningCells.length <= 5 && value.winningCells.every(isCoord);
+  if (!validShape) return false;
 
-function isHistory(value: unknown): value is readonly GomokuGameRecord[] {
-  return Array.isArray(value) && value.every(isRecord);
+  const record = value as GomokuGameRecord;
+  const allCoordsFit = [...record.moves.map((move) => move.coord), ...record.winningCells]
+    .every(([x, y]) => x >= 0 && y >= 0 && x < record.size && y < record.size);
+  if (!allCoordsFit) return false;
+
+  const replay = replayMoves({ startingPlayer: record.startingPlayer }, record.moves, record.size);
+  if (replay.moves.length !== record.moves.length) return false;
+  if (record.result === "draw") return replay.draw && record.winningCells.length === 0;
+  return replay.winner?.stone === record.result
+    && replay.winner.cells.every((coord, index) => coord[0] === record.winningCells[index]?.[0] && coord[1] === record.winningCells[index]?.[1]);
 }
 
 export function normalizeName(name: string) {
@@ -100,7 +109,8 @@ export function normalizePair(first: string, second: string) {
 }
 
 export function loadGomokuHistory() {
-  return [...(readVersionedStorage(GOMOKU_HISTORY_KEY, GOMOKU_HISTORY_VERSION, isHistory) ?? [])]
+  const values = readVersionedStorage<unknown[]>(GOMOKU_HISTORY_KEY, GOMOKU_HISTORY_VERSION, (value): value is unknown[] => Array.isArray(value) && value.length <= 100);
+  return (values ?? []).filter(isRecord)
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
     .slice(0, MAX_RECORDS);
 }
@@ -114,19 +124,17 @@ export function saveGomokuHistory(records: readonly GomokuGameRecord[]) {
 
 export function recordCompletedGame(record: GomokuGameRecord) {
   const records = [record, ...loadGomokuHistory().filter((item) => item.id !== record.id)].slice(0, MAX_RECORDS);
-  saveGomokuHistory(records);
-  return records;
+  return { records, saved: saveGomokuHistory(records) };
 }
 
 export function deleteCompletedGame(id: string) {
   const records = loadGomokuHistory().filter((record) => record.id !== id);
-  saveGomokuHistory(records);
-  return records;
+  return { records, saved: saveGomokuHistory(records) };
 }
 
 export function clearGomokuHistory() {
-  removeVersionedStorage(GOMOKU_HISTORY_KEY);
-  return [] as GomokuGameRecord[];
+  const records: GomokuGameRecord[] = [];
+  return { records, saved: removeVersionedStorage(GOMOKU_HISTORY_KEY) };
 }
 
 export function createCompletedRecord(
