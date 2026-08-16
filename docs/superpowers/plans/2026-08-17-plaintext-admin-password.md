@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Never hardcode `1234` or any other password in tracked files.
+- Never hardcode a password in tracked files.
 - Never print, log, commit, or send the value of `ADMIN_PASSWORD` through chat.
 - Keep `ADMIN_SESSION_SECRET` and `LOGIN_ATTEMPT_SALT` unchanged.
 - Do not add or run automated tests; use type-check, build, static review, and production smoke checks.

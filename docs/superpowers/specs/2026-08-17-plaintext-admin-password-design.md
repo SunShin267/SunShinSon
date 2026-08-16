@@ -11,7 +11,7 @@ Simplify quiz-admin authentication by storing the chosen password as a plaintext
 - Keep `ADMIN_SESSION_SECRET` for signed eight-hour admin cookies.
 - Keep `LOGIN_ATTEMPT_SALT` and the existing D1 rate limit unchanged.
 - Update the secret helper and deployment documentation to require three production secrets: `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and `LOGIN_ATTEMPT_SALT`.
-- Do not hardcode `1234` or any other password in tracked files. The user will set `ADMIN_PASSWORD=1234` directly through Wrangler.
+- Never hardcode a password in tracked files. The user will set `ADMIN_PASSWORD` directly through Wrangler.
 
 ## Error Handling and Migration
 
