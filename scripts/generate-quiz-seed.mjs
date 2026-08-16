@@ -13,6 +13,29 @@ const normalizeQuestion = (value) =>
 
 const escapeSql = (value) => value.replaceAll("'", "''");
 
+const parseQuestionArray = (arrayLiteral, label) => {
+  let serialized;
+
+  try {
+    serialized = vm.runInNewContext(
+      `JSON.stringify(${arrayLiteral})`,
+      Object.create(null),
+      {
+        timeout: 1_000,
+        contextCodeGeneration: { strings: false, wasm: false },
+      },
+    );
+  } catch (error) {
+    throw new Error(`Could not safely parse the ${label} question array.`, { cause: error });
+  }
+
+  if (typeof serialized !== "string") {
+    throw new Error(`The ${label} question array is not JSON-serializable.`);
+  }
+
+  return JSON.parse(serialized);
+};
+
 const requireNonEmptyString = (question, field, index) => {
   if (typeof question[field] !== "string" || question[field].trim() === "") {
     throw new Error(`Question ${index + 1} must have a non-empty ${field}.`);
@@ -52,8 +75,8 @@ if (!match) {
   throw new Error("Could not find both quiz question arrays in the fallback HTML.");
 }
 
-const initialQuestions = vm.runInNewContext(`(${match[1]})`);
-const additionalQuestions = vm.runInNewContext(`(${match[2]})`);
+const initialQuestions = parseQuestionArray(match[1], "initial");
+const additionalQuestions = parseQuestionArray(match[2], "additional");
 const questions = [...initialQuestions, ...additionalQuestions];
 
 if (questions.length !== 180) {
@@ -61,6 +84,17 @@ if (questions.length !== 180) {
 }
 
 questions.forEach(validateQuestion);
+
+const normalizedQuestions = new Set();
+questions.forEach((question, index) => {
+  const normalizedQuestion = normalizeQuestion(question.q);
+
+  if (normalizedQuestions.has(normalizedQuestion)) {
+    throw new Error(`Question ${index + 1} has a duplicate normalized question.`);
+  }
+
+  normalizedQuestions.add(normalizedQuestion);
+});
 
 const insertStatements = questions.map((question) => {
   const values = [
