@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "sunshinson-db",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "4bdcb839-b664-4e0f-a755-ebc2e0162cc1",
       "migrations_dir": "drizzle"
     }
   ],
