@@ -11,7 +11,6 @@ const LOGIN_WINDOW_SECONDS = 15 * 60;
 const LOGIN_BLOCK_SECONDS = 15 * 60;
 const LOGIN_ATTEMPT_RETENTION_SECONDS = 24 * 60 * 60;
 const MAX_FAILED_ATTEMPTS = 5;
-const PBKDF2_ITERATIONS = 210_000;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -55,37 +54,12 @@ function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean {
   return difference === 0;
 }
 
-async function derivePasswordHash(
-  password: string,
-  salt: Uint8Array<ArrayBuffer>,
-): Promise<Uint8Array<ArrayBuffer>> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      salt,
-      iterations: PBKDF2_ITERATIONS,
-    },
-    key,
-    256,
-  );
+function passwordMatches(password: string, env: Env): boolean {
+  if (typeof env.ADMIN_PASSWORD !== "string" || env.ADMIN_PASSWORD.length === 0) {
+    throw new Error("ADMIN_PASSWORD must be configured.");
+  }
 
-  return new Uint8Array(bits);
-}
-
-async function passwordMatches(password: string, env: Env): Promise<boolean> {
-  const expectedHash = base64UrlToBytes(env.ADMIN_PASSWORD_HASH);
-  const salt = base64UrlToBytes(env.ADMIN_PASSWORD_SALT);
-  const actualHash = await derivePasswordHash(password, salt);
-
-  return constantTimeEqual(actualHash, expectedHash);
+  return constantTimeEqual(encoder.encode(password), encoder.encode(env.ADMIN_PASSWORD));
 }
 
 async function importSessionKey(secret: string): Promise<CryptoKey> {
@@ -278,6 +252,7 @@ export async function handleAdminLogin(request: Request, env: Env): Promise<Resp
   }
 
   const password = (body as { password: string }).password;
+  const passwordIsValid = passwordMatches(password, env);
   const now = Math.floor(Date.now() / 1000);
   const key = await clientKey(request, env.LOGIN_ATTEMPT_SALT);
   const db = createDb(env.DB);
@@ -302,7 +277,7 @@ export async function handleAdminLogin(request: Request, env: Env): Promise<Resp
     );
   }
 
-  if (await passwordMatches(password, env)) {
+  if (passwordIsValid) {
     await db.delete(adminLoginAttempts).where(eq(adminLoginAttempts.clientKey, key));
     const token = await createSessionToken(env, now);
 
