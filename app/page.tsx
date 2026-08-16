@@ -173,7 +173,9 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
                 key={topic.id}
                 onClick={() => {
                   if (topic.id === "do-vui") {
-                    window.location.assign("/do-vui-do-meo");
+                    window.location.assign(
+                      process.env.NEXT_PUBLIC_QUIZ_PATH || "/do-vui-do-meo",
+                    );
                     return;
                   }
 

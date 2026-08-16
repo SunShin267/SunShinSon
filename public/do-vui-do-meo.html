@@ -406,7 +406,7 @@
 <body>
 <div class="wrap">
   <header class="quiz-header">
-    <a class="quiz-brand" href="/" aria-label="Về trang chủ SunShinSon">
+    <a class="quiz-brand" href="./" aria-label="Về trang chủ SunShinSon">
       <span class="brand-sun" aria-hidden="true">•ᴗ•</span>
       <span>SunShinSon</span>
     </a>
@@ -454,7 +454,7 @@ document.getElementById('headerName').textContent = quizUserName;
 document.getElementById('headerAvatar').textContent = quizUserName.charAt(0).toUpperCase();
 document.getElementById('logoutButton').addEventListener('click', () => {
   window.localStorage.removeItem('sunshinson-name');
-  window.location.assign('/');
+  window.location.assign('./');
 });
 
 /* ================= NGÂN HÀNG CÂU HỎI =================
