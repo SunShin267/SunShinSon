@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đố vui đố mẹo cho bé 🦊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF7E8;
+    --ink:#2D2A6E;
+    --coral:#FF6F59;
+    --yellow:#FFC93C;
+    --mint:#43C6AC;
+    --pink:#FF8FAB;
+    --card:#FFFFFF;
+    --shadow: 0 10px 0 rgba(45,42,110,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 15%, rgba(255,201,60,0.35) 0, transparent 45%),
+      radial-gradient(circle at 88% 20%, rgba(67,198,172,0.3) 0, transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(255,143,171,0.3) 0, transparent 50%),
+      var(--cream);
+    font-family:'Nunito', sans-serif;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+  .wrap{ width:100%; max-width:600px; }
+  .quiz-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .quiz-brand{
+    display:flex;
+    align-items:center;
+    color:var(--ink);
+    font-family:'Baloo 2',sans-serif;
+    font-weight:800;
+    text-decoration:none;
+  }
+  .quiz-brand{ gap:9px; font-size:18px; }
+  .brand-sun{
+    width:38px;
+    height:38px;
+    display:grid;
+    place-items:center;
+    border:3px solid var(--ink);
+    border-radius:50%;
+    background:var(--yellow);
+    font-family:'Nunito',sans-serif;
+    font-size:12px;
+    box-shadow:0 4px 0 rgba(45,42,110,.18);
+  }
+  .header-actions{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .mini-avatar{
+    width:35px;
+    height:35px;
+    display:grid;
+    place-items:center;
+    flex:0 0 auto;
+    border:2px solid #fff;
+    border-radius:50%;
+    background:#d9f5e6;
+    color:#23765c;
+    font-weight:900;
+    box-shadow:0 0 0 1px #b9dfcf;
+  }
+  .header-name{
+    max-width:130px;
+    overflow:hidden;
+    color:var(--ink);
+    font-size:14px;
+    font-weight:800;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .logout-button{
+    width:36px;
+    height:36px;
+    flex:0 0 auto;
+    border:2px solid #e5e1f1;
+    border-radius:12px;
+    background:#fff;
+    color:#77729b;
+    cursor:pointer;
+    font-family:'Nunito',sans-serif;
+    font-size:17px;
+    font-weight:900;
+    transition:background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .logout-button:hover{ background:#fff0ec; border-color:#ffd0c7; color:#d45f4b; }
+  .quiz-brand:focus-visible,
+  .logout-button:focus-visible{ outline:4px solid rgba(255,201,60,.55); outline-offset:3px; }
+  .title{
+    font-family:'Baloo 2', sans-serif;
+    text-align:center;
+    font-size:clamp(28px,6vw,40px);
+    font-weight:800;
+    margin:4px 0 2px;
+    color:var(--ink);
+  }
+  .subtitle{
+    text-align:center;
+    font-weight:700;
+    color:#6b6796;
+    margin-bottom:18px;
+    font-size:15px;
+  }
+
+  /* Mascot */
+  .mascot-zone{ display:flex; justify-content:center; margin-bottom:8px; }
+  .fox{ width:120px; height:120px; transition:transform .25s ease; }
+  .fox.bounce{ animation:bounce .5s ease; }
+  .fox.shake{ animation:shake .5s ease; }
+  @keyframes bounce{ 0%{transform:translateY(0)} 30%{transform:translateY(-16px) rotate(-4deg)} 55%{transform:translateY(0) rotate(3deg)} 100%{transform:translateY(0)} }
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px) rotate(-3deg)} 40%{transform:translateX(8px) rotate(3deg)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+
+  .bubble{
+    background:var(--card);
+    border:3px solid var(--ink);
+    border-radius:16px;
+    padding:8px 16px;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    max-width:280px;
+    margin:0 auto 6px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    min-height:20px;
+  }
+
+  /* progress */
+  .progress-row{ display:flex; gap:6px; justify-content:center; margin:10px 0 20px; flex-wrap:wrap; }
+  .dot{ width:12px; height:12px; border-radius:50%; background:#E6E1F5; border:2px solid #cfc9ea; transition:.2s; }
+  .dot.done{ background:var(--mint); border-color:var(--mint); }
+  .dot.wrong{ background:var(--coral); border-color:var(--coral); }
+  .dot.current{ background:var(--yellow); border-color:var(--ink); transform:scale(1.25); }
+  .dot.clickable{ cursor:pointer; }
+  .dot.clickable:hover{ transform:scale(1.35); }
+
+  .scoreboard{
+    display:flex; justify-content:center; gap:10px; margin-bottom:18px; font-family:'Baloo 2',sans-serif; font-weight:700;
+  }
+  .pill{ background:var(--card); border:3px solid var(--ink); border-radius:999px; padding:6px 16px; box-shadow:var(--shadow); font-size:14px;}
+
+  /* card */
+  .card{
+    background:var(--card);
+    border:3px solid var(--ink);
+    border-radius:24px;
+    padding:26px 22px;
+    box-shadow: 0 12px 0 rgba(45,42,110,0.15);
+    position:relative;
+    overflow:hidden;
+  }
+  .tag{
+    display:inline-block;
+    font-family:'Baloo 2',sans-serif;
+    font-size:12px;
+    font-weight:700;
+    padding:4px 12px;
+    border-radius:999px;
+    margin-bottom:14px;
+    color:#fff;
+  }
+  .tag.dovui{ background:var(--mint); }
+  .tag.domeo{ background:var(--pink); }
+  .question{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:clamp(19px,4.5vw,23px);
+    line-height:1.35;
+    margin:0 0 20px;
+  }
+  .options{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:420px){ .options{ grid-template-columns:1fr; } }
+  .opt{
+    font-family:'Nunito',sans-serif;
+    font-weight:800;
+    font-size:15px;
+    padding:14px 12px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:#FFF9EE;
+    cursor:pointer;
+    text-align:left;
+    transition:transform .12s ease, background .15s ease;
+    color:var(--ink);
+  }
+  .opt:hover{ transform:translateY(-2px); background:#FFEFCB; }
+  .opt:active{ transform:translateY(1px); }
+  .opt.correct{ background:var(--mint); color:#fff; }
+  .opt.incorrect{ background:var(--coral); color:#fff; }
+  .opt[disabled]{ cursor:default; }
+  .opt:not(.correct):not(.incorrect):disabled{ opacity:.5; }
+
+  .explain{
+    margin-top:16px;
+    font-weight:700;
+    font-size:14.5px;
+    background:#FFF3D6;
+    border:2px dashed var(--yellow);
+    border-radius:14px;
+    padding:12px 14px;
+    display:none;
+  }
+  .explain.show{ display:block; animation:pop .25s ease; }
+  @keyframes pop{ from{transform:scale(.9); opacity:0;} to{transform:scale(1); opacity:1;} }
+
+  .next-btn{
+    margin-top:18px;
+    width:100%;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    padding:14px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:var(--coral);
+    color:#fff;
+    cursor:pointer;
+    display:none;
+    box-shadow:0 6px 0 rgba(45,42,110,0.25);
+  }
+  .next-btn.show{ display:block; }
+  .next-btn:active{ transform:translateY(3px); box-shadow:none; }
+
+  /* end screen */
+  .end-card{ text-align:center; }
+  .end-emoji{ font-size:56px; }
+  .end-title{ font-family:'Baloo 2',sans-serif; font-weight:800; font-size:24px; margin:6px 0; }
+  .end-msg{ font-weight:700; color:#6b6796; margin-bottom:18px; }
+  .restart-btn{
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    padding:14px 28px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:var(--yellow);
+    color:var(--ink);
+    cursor:pointer;
+    box-shadow:0 6px 0 rgba(45,42,110,0.25);
+    width:100%;
+  }
+  .restart-btn:active{ transform:translateY(3px); box-shadow:none; }
+
+  .report-btn{
+    margin-top:10px;
+    width:100%;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    padding:12px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:var(--mint);
+    color:#fff;
+    cursor:pointer;
+    box-shadow:0 6px 0 rgba(45,42,110,0.25);
+  }
+  .report-btn:active{ transform:translateY(3px); box-shadow:none; }
+
+  .setup-btn{
+    margin-top:10px;
+    width:100%;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    padding:12px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    cursor:pointer;
+    box-shadow:0 6px 0 rgba(45,42,110,0.25);
+  }
+  .setup-btn:active{ transform:translateY(3px); box-shadow:none; }
+
+  .report-header{ font-family:'Baloo 2',sans-serif; font-weight:800; font-size:20px; margin-bottom:14px; text-align:center; }
+  .report-list{ display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto; padding-right:2px; }
+  .report-item{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    text-align:left;
+    width:100%;
+    background:#FFF9EE;
+    border:2.5px solid var(--ink);
+    border-radius:14px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-family:'Nunito',sans-serif;
+    color:var(--ink);
+    transition:transform .12s ease, background .15s ease;
+  }
+  .report-item:hover{ transform:translateY(-2px); background:#FFEFCB; }
+  .report-icon{ font-size:18px; flex-shrink:0; margin-top:1px; }
+  .report-q{ font-weight:800; font-size:14px; line-height:1.3; }
+  .report-meta{ font-weight:700; font-size:12.5px; color:#6b6796; margin-top:3px; }
+  .report-answer{ font-weight:800; font-size:12.5px; color:#1f7a63; margin-top:4px; }
+  .report-actions{ display:flex; gap:10px; margin-top:16px; }
+  .report-actions .restart-btn, .report-actions .close-btn{ flex:1; }
+
+  .close-btn{
+    margin-top:18px;
+    width:100%;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    padding:14px;
+    border-radius:14px;
+    border:3px solid var(--ink);
+    background:var(--yellow);
+    color:var(--ink);
+    cursor:pointer;
+    box-shadow:0 6px 0 rgba(45,42,110,0.25);
+  }
+  .close-btn:active{ transform:translateY(3px); box-shadow:none; }
+  .review-badge{
+    display:inline-block;
+    font-family:'Baloo 2',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    padding:3px 10px;
+    border-radius:999px;
+    margin-left:6px;
+    background:var(--ink);
+    color:#fff;
+  }
+
+  /* setup screen */
+  .setup-section{ margin-bottom:18px; }
+  .setup-label{
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    margin-bottom:8px;
+    display:block;
+  }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    font-family:'Nunito',sans-serif;
+    font-weight:800;
+    font-size:13.5px;
+    padding:9px 14px;
+    border-radius:999px;
+    border:2.5px solid var(--ink);
+    background:#FFF9EE;
+    cursor:pointer;
+    color:var(--ink);
+    transition:.15s;
+  }
+  .chip:hover{ background:#FFEFCB; }
+  .chip.selected{ background:var(--ink); color:#fff; }
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:#FFF9EE; border:2.5px solid var(--ink); border-radius:14px; padding:10px 14px;
+    cursor:pointer;
+  }
+  .toggle-switch{ width:46px; height:26px; border-radius:999px; background:#cfc9ea; position:relative; transition:.2s; flex-shrink:0; }
+  .toggle-switch.on{ background:var(--mint); }
+  .toggle-knob{ width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .toggle-switch.on .toggle-knob{ left:23px; }
+  .pool-info{ font-weight:700; font-size:13px; color:#6b6796; text-align:center; margin:2px 0 16px; }
+  .start-btn{
+    width:100%;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:800;
+    font-size:18px;
+    padding:16px;
+    border-radius:16px;
+    border:3px solid var(--ink);
+    background:var(--coral);
+    color:#fff;
+    cursor:pointer;
+    box-shadow:0 7px 0 rgba(45,42,110,0.28);
+  }
+  .start-btn:active{ transform:translateY(4px); box-shadow:none; }
+  .start-btn[disabled]{ opacity:.45; cursor:default; }
+
+  .confetti{ position:fixed; top:-20px; width:10px; height:16px; opacity:.9; border-radius:2px; pointer-events:none; animation:fall linear forwards; z-index:50; }
+  @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:.3; } }
+
+  .sr-only{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+  @media (prefers-reduced-motion: reduce){
+    .fox.bounce, .fox.shake, .confetti{ animation:none !important; }
+  }
+  @media (max-width:420px){
+    .quiz-brand{ font-size:16px; }
+    .header-name{ max-width:72px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="quiz-header">
+    <a class="quiz-brand" href="/" aria-label="Về trang chủ SunShinSon">
+      <span class="brand-sun" aria-hidden="true">•ᴗ•</span>
+      <span>SunShinSon</span>
+    </a>
+    <div class="header-actions">
+      <div class="mini-avatar" id="headerAvatar" aria-hidden="true">B</div>
+      <span class="header-name" id="headerName">Bé</span>
+      <button class="logout-button" id="logoutButton" type="button" aria-label="Đăng xuất" title="Đăng xuất">↗</button>
+    </div>
+  </header>
+  <div class="title">Đố vui – Đố mẹo 🦊</div>
+  <div class="subtitle" id="subtitle">Chọn chủ đề, độ tuổi rồi cùng Cáo Tí đố vui nào!</div>
+
+  <div class="mascot-zone">
+    <svg class="fox" id="fox" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="60" cy="75" rx="34" ry="30" fill="#FF8C4B"/>
+      <path d="M30 40 L45 65 L25 68 Z" fill="#FF8C4B"/>
+      <path d="M90 40 L75 65 L95 68 Z" fill="#FF8C4B"/>
+      <path d="M33 44 L42 60 L28 61 Z" fill="#FFF7E8"/>
+      <path d="M87 44 L78 60 L92 61 Z" fill="#FFF7E8"/>
+      <ellipse cx="60" cy="80" rx="34" ry="30" fill="#FFA05C"/>
+      <ellipse cx="60" cy="88" rx="18" ry="14" fill="#FFF7E8"/>
+      <g id="foxEyes">
+        <circle cx="48" cy="72" r="5" fill="#2D2A6E"/>
+        <circle cx="72" cy="72" r="5" fill="#2D2A6E"/>
+      </g>
+      <ellipse cx="60" cy="84" rx="4" ry="3" fill="#2D2A6E"/>
+      <path id="foxMouth" d="M52 90 Q60 96 68 90" stroke="#2D2A6E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="44" cy="80" rx="4" ry="3" fill="#FF6F59" opacity="0.6"/>
+      <ellipse cx="76" cy="80" rx="4" ry="3" fill="#FF6F59" opacity="0.6"/>
+    </svg>
+  </div>
+  <div class="bubble" id="bubble">Bé đã sẵn sàng đố vui chưa nào?</div>
+
+  <div class="progress-row" id="progress"></div>
+  <div class="scoreboard" id="scoreboard">
+    <div class="pill">⭐ Điểm: <span id="score">0</span>/<span id="totalQ"></span></div>
+  </div>
+
+  <div class="card" id="quizCard"></div>
+</div>
+
+<script>
+const quizUserName = (window.localStorage.getItem('sunshinson-name') || '').trim() || 'Bé';
+document.getElementById('headerName').textContent = quizUserName;
+document.getElementById('headerAvatar').textContent = quizUserName.charAt(0).toUpperCase();
+document.getElementById('logoutButton').addEventListener('click', () => {
+  window.localStorage.removeItem('sunshinson-name');
+  window.location.assign('/');
+});
+
+/* ================= NGÂN HÀNG CÂU HỎI =================
+   topic: dongvat | tunhien | toanhoc | domeo | vanhoa
+   age:   de (3-5 tuổi) | vua (6-8 tuổi) | kho (9-12 tuổi)
+========================================================= */
+const questions = [
+  { tag:"đố vui", topic:"dongvat", age:"de", q:"Con gì kêu “meo meo” và thích bắt chuột?", opts:["Con chó","Con mèo","Con gà","Con vịt"], correct:1,
+    explain:"Đúng rồi, đó là con mèo! Mèo kêu “meo meo” và rất giỏi bắt chuột đó." },
+  { tag:"đố vui", topic:"tunhien", age:"vua", q:"Mặt Trời mọc ở hướng nào?", opts:["Hướng Đông","Hướng Tây","Hướng Nam","Hướng Bắc"], correct:0,
+    explain:"Chính xác! Mỗi sáng Mặt Trời mọc ở hướng Đông và lặn ở hướng Tây." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Có 5 con chim đậu trên cành, bỗng nghe tiếng pháo nổ vang trời. Hỏi trên cành còn lại mấy con chim?", opts:["4 con","5 con","0 con","1 con"], correct:2,
+    explain:"Mẹo nè! Nghe tiếng nổ, cả đàn chim đều giật mình bay đi hết, nên cành cây không còn con nào cả." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Một tuần có bao nhiêu ngày?", opts:["5 ngày","6 ngày","7 ngày","8 ngày"], correct:2,
+    explain:"Đúng vậy, một tuần có 7 ngày: từ thứ Hai đến Chủ Nhật." },
+  { tag:"đố mẹo", topic:"domeo", age:"de", q:"Cái gì có 4 chân mà không biết đi?", opts:["Con chó","Cái bàn","Con mèo","Xe đạp"], correct:1,
+    explain:"Là cái bàn đó! Bàn có 4 chân nhưng chỉ đứng yên một chỗ thôi." },
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Con vật nào được gọi là “chúa sơn lâm”?", opts:["Sư tử","Voi","Hổ","Gấu"], correct:2,
+    explain:"Chính xác, đó là con Hổ - “chúa sơn lâm” của núi rừng!" },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Mẹ có 3 cái kẹo, chia đều cho 2 bé mà không được bẻ kẹo. Làm sao chia?", opts:["Bé nào nhanh tay hơn lấy hết","Mẹ giữ lại phần dư 1 cái","Bỏ đi 1 cái kẹo","Không chia được"], correct:1,
+    explain:"Mẹo là mẹ sẽ giữ lại 1 cái kẹo dư, còn 2 cái chia đều cho 2 bé, mỗi bé 1 cái là công bằng rồi!" },
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Loài chim nào không biết bay nhưng bơi rất giỏi, sống ở Nam Cực?", opts:["Đại bàng","Chim cánh cụt","Vẹt","Bồ câu"], correct:1,
+    explain:"Đúng rồi, đó là chim cánh cụt! Tuy không bay được nhưng bơi lội cực kỳ giỏi." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Cái gì không có chân mà chạy suốt ngày đêm không nghỉ?", opts:["Con sông","Chiếc đồng hồ","Cơn gió","Cả 3 đáp án"], correct:1,
+    explain:"Là chiếc đồng hồ đó bé ơi! Kim đồng hồ luôn “chạy” dù không hề có chân." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Một năm có bao nhiêu tháng?", opts:["10 tháng","11 tháng","12 tháng","13 tháng"], correct:2,
+    explain:"Đúng vậy, một năm có 12 tháng, từ tháng Một đến tháng Mười Hai." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Cái gì càng cho đi lại càng nhiều thêm?", opts:["Tiền bạc","Tình yêu thương","Đồ chơi","Bánh kẹo"], correct:1,
+    explain:"Đó là tình yêu thương! Bé càng chia sẻ yêu thương với mọi người, trái tim bé lại càng đầy ắp niềm vui." },
+  { tag:"đố vui", topic:"toanhoc", age:"vua", q:"3 anh em, mỗi người có 10 ngón tay. Hỏi cả 3 anh em có tất cả bao nhiêu ngón tay?", opts:["20 ngón","30 ngón","13 ngón","33 ngón"], correct:1,
+    explain:"Chính xác! 10 + 10 + 10 = 30 ngón tay." },
+  { tag:"đố vui", topic:"dongvat", age:"de", q:"Con vật nào cao nhất trong các loài động vật sống trên cạn?", opts:["Voi","Hươu cao cổ","Ngựa vằn","Sư tử"], correct:1,
+    explain:"Đúng rồi, đó là hươu cao cổ! Với cái cổ siêu dài, nó có thể ăn lá trên những cành cây rất cao." },
+  { tag:"đố mẹo", topic:"domeo", age:"de", q:"Cái gì càng lau lại càng bẩn?", opts:["Cái gương","Cái khăn lau","Cái bàn","Đôi giày"], correct:1,
+    explain:"Là cái khăn lau đó! Khăn lau càng lau nhiều bụi bẩn thì bản thân nó lại càng dơ thêm." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Số nào đứng ngay sau số 9?", opts:["8","10","11","7"], correct:1,
+    explain:"Chính xác, sau số 9 là số 10!" },
+  { tag:"đố mẹo", topic:"domeo", age:"de", q:"Cầu gì không bắc qua sông mà vẫn có đủ 7 sắc màu?", opts:["Cầu vồng","Cầu tre","Cầu treo","Cầu thang"], correct:0,
+    explain:"Đúng rồi, đó là cầu vồng! Nó xuất hiện trên bầu trời sau cơn mưa với 7 sắc màu rực rỡ." },
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Con vật nào có thể ngủ đứng mà không cần nằm xuống?", opts:["Con mèo","Con ngựa","Con vịt","Con thỏ"], correct:1,
+    explain:"Chính xác, đó là con ngựa! Ngựa có thể đứng ngủ nhờ cấu tạo chân đặc biệt." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Cái gì bé nhìn thấy mỗi ngày nhưng không bao giờ chạm vào được?", opts:["Cái bóng của bé","Mặt trăng","Cầu vồng","Đám mây"], correct:0,
+    explain:"Là cái bóng của bé đó! Nó luôn đi theo bé nhưng bé không thể nào cầm hay chạm vào được." },
+  { tag:"đố vui", topic:"tunhien", age:"vua", q:"Miền Bắc Việt Nam có mấy mùa trong một năm?", opts:["2 mùa","3 mùa","4 mùa","5 mùa"], correct:2,
+    explain:"Đúng vậy, miền Bắc có 4 mùa: Xuân, Hạ, Thu, Đông." },
+  { tag:"đố vui", topic:"vanhoa", age:"vua", q:"Loài hoa nào được xem là quốc hoa của Việt Nam?", opts:["Hoa hồng","Hoa sen","Hoa mai","Hoa đào"], correct:1,
+    explain:"Chính xác, đó là hoa sen! Hoa sen tượng trưng cho sự thanh cao, tinh khiết của người Việt Nam." },
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Loài vật nào ngủ nhiều nhất, có khi lên tới 20 giờ mỗi ngày?", opts:["Con mèo","Gấu koala","Con chó","Con voi"], correct:1,
+    explain:"Đúng rồi, đó là gấu koala! Vì ăn lá bạch đàn ít năng lượng nên koala cần ngủ rất nhiều." },
+  { tag:"đố mẹo", topic:"domeo", age:"de", q:"Cái gì có răng mà không thể nhai được thứ gì?", opts:["Cái lược","Con cá sấu","Cái kéo","Cái cưa"], correct:0,
+    explain:"Là cái lược đó! Lược có nhiều “răng” để chải tóc chứ không dùng để nhai." },
+  { tag:"đố vui", topic:"dongvat", age:"de", q:"Con vật nào thường được gọi là “người bạn trung thành nhất” của con người?", opts:["Con mèo","Con chó","Con ngựa","Con chim"], correct:1,
+    explain:"Chính xác, đó là con chó! Chó luôn trung thành và yêu thương chủ của mình." },
+  { tag:"đố mẹo", topic:"domeo", age:"kho", q:"Cái gì luôn ở phía trước bạn nhưng bạn không bao giờ nhìn thấy được?", opts:["Quá khứ","Tương lai","Hiện tại","Ước mơ"], correct:1,
+    explain:"Đó là tương lai! Nó luôn ở phía trước chờ đón bé, nhưng không ai nhìn thấy được nó sẽ ra sao." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Một ngày có bao nhiêu giờ?", opts:["12 giờ","20 giờ","24 giờ","30 giờ"], correct:2,
+    explain:"Đúng vậy, một ngày có 24 giờ, chia thành ban ngày và ban đêm." },
+
+  /* ---- Câu hỏi bổ sung ---- */
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Loài chim nào được mệnh danh là “vua của bầu trời”?", opts:["Chim sẻ","Đại bàng","Chim bồ câu","Vẹt"], correct:1,
+    explain:"Đúng rồi, đại bàng bay rất cao và mạnh mẽ nên được gọi là “vua của bầu trời”." },
+  { tag:"đố vui", topic:"dongvat", age:"kho", q:"Loài động vật nào được xem là lớn nhất thế giới hiện nay?", opts:["Voi châu Phi","Cá voi xanh","Cá mập trắng","Hươu cao cổ"], correct:1,
+    explain:"Chính xác, cá voi xanh là loài động vật lớn nhất từng tồn tại, sống ở đại dương." },
+  { tag:"đố vui", topic:"dongvat", age:"vua", q:"Loài động vật nào có thể đổi màu da để ngụy trang?", opts:["Con ếch","Tắc kè hoa","Con rùa","Con thỏ"], correct:1,
+    explain:"Đúng vậy, tắc kè hoa có thể đổi màu da để hoà vào môi trường xung quanh." },
+  { tag:"đố vui", topic:"dongvat", age:"de", q:"Gà con được sinh ra từ đâu?", opts:["Quả trứng","Cái kén","Túi mẹ","Hạt giống"], correct:0,
+    explain:"Đúng rồi, gà con nở ra từ quả trứng gà đó bé!" },
+  { tag:"đố vui", topic:"dongvat", age:"de", q:"Con vật nào là biểu tượng của nước Úc, di chuyển bằng cách nhảy?", opts:["Gấu trúc","Chuột túi (Kangaroo)","Sư tử","Hươu"], correct:1,
+    explain:"Chính xác, đó là chuột túi Kangaroo! Nó nhảy bằng hai chân sau rất khỏe." },
+  { tag:"đố vui", topic:"tunhien", age:"vua", q:"Nước đóng băng ở bao nhiêu độ C?", opts:["0 độ C","10 độ C","50 độ C","100 độ C"], correct:0,
+    explain:"Đúng rồi, nước đóng băng thành đá ở 0 độ C." },
+  { tag:"đố vui", topic:"tunhien", age:"kho", q:"Hành tinh nào gần Mặt Trời nhất trong Hệ Mặt Trời?", opts:["Trái Đất","Sao Kim","Sao Thuỷ","Sao Hoả"], correct:2,
+    explain:"Chính xác, Sao Thuỷ là hành tinh gần Mặt Trời nhất." },
+  { tag:"đố vui", topic:"tunhien", age:"de", q:"Cầu vồng thường xuất hiện sau hiện tượng thời tiết nào?", opts:["Sau cơn mưa","Sau khi có sương mù","Sau bão tuyết","Sau khi trời nắng gắt"], correct:0,
+    explain:"Đúng vậy, cầu vồng thường xuất hiện trên bầu trời sau cơn mưa khi có ánh nắng." },
+  { tag:"đố vui", topic:"tunhien", age:"kho", q:"Cây xanh hấp thụ loại khí nào để quang hợp?", opts:["Khí oxy","Khí CO2 (carbon dioxide)","Khí nitơ","Khí hydro"], correct:1,
+    explain:"Chính xác, cây xanh hấp thụ khí CO2 và nhả ra khí oxy trong quá trình quang hợp." },
+  { tag:"đố vui", topic:"tunhien", age:"de", q:"Mùa nào trong năm thường lạnh nhất ở miền Bắc Việt Nam?", opts:["Mùa Xuân","Mùa Hạ","Mùa Thu","Mùa Đông"], correct:3,
+    explain:"Đúng rồi, mùa Đông là mùa lạnh nhất ở miền Bắc." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"5 cộng 5 bằng bao nhiêu?", opts:["9","10","11","8"], correct:1,
+    explain:"Chính xác, 5 + 5 = 10!" },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Hình nào có 3 cạnh và 3 góc?", opts:["Hình vuông","Hình tròn","Hình tam giác","Hình chữ nhật"], correct:2,
+    explain:"Đúng rồi, hình tam giác có 3 cạnh và 3 góc." },
+  { tag:"đố vui", topic:"toanhoc", age:"vua", q:"10 chia 2 bằng bao nhiêu?", opts:["4","5","6","2"], correct:1,
+    explain:"Chính xác, 10 chia cho 2 bằng 5." },
+  { tag:"đố vui", topic:"toanhoc", age:"de", q:"Số nào lớn hơn: 15 hay 51?", opts:["15","51","Bằng nhau","Không so sánh được"], correct:1,
+    explain:"Đúng rồi, 51 lớn hơn 15 vì chữ số hàng chục của 51 lớn hơn." },
+  { tag:"đố vui", topic:"toanhoc", age:"vua", q:"Một giờ có bao nhiêu phút?", opts:["30 phút","45 phút","60 phút","90 phút"], correct:2,
+    explain:"Chính xác, một giờ có 60 phút." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Cái gì càng lấy ra khỏi nó thì nó càng to thêm?", opts:["Cái hộp","Cái hố (khi đào đất)","Quả bóng","Cuốn sách"], correct:1,
+    explain:"Là cái hố đó! Càng lấy đất ra khỏi hố, cái hố lại càng to thêm." },
+  { tag:"đố mẹo", topic:"domeo", age:"vua", q:"Cái gì khi bị ướt thì lại càng nặng thêm?", opts:["Cục đá","Miếng bọt biển","Quả bóng bay","Chiếc lá khô"], correct:1,
+    explain:"Đúng rồi, miếng bọt biển hút nước nên khi ướt sẽ nặng hơn lúc khô." },
+  { tag:"đố mẹo", topic:"domeo", age:"kho", q:"Cái gì luôn đứng yên một chỗ nhưng lại có thể “đi” khắp thế giới?", opts:["Con tem thư","Cột đèn đường","Cái cây","Ngọn núi"], correct:0,
+    explain:"Là con tem thư đó! Nó được dán lên thư và theo lá thư đi khắp nơi trên thế giới." },
+  { tag:"đố mẹo", topic:"domeo", age:"kho", q:"Buổi sáng bò bằng 4 chân, buổi trưa đi bằng 2 chân, buổi tối chống thêm 1 cây gậy. Đó là ai?", opts:["Con vật lạ","Con người","Con robot","Con khủng long"], correct:1,
+    explain:"Đó chính là con người! Lúc nhỏ bò bằng tay và chân, lớn lên đi bằng 2 chân, về già chống gậy đi." },
+  { tag:"đố vui", topic:"vanhoa", age:"de", q:"Tết Nguyên Đán của Việt Nam còn được gọi là gì?", opts:["Tết cổ truyền","Tết Dương lịch","Tết thiếu nhi","Tết Trung thu"], correct:0,
+    explain:"Đúng rồi, Tết Nguyên Đán còn được gọi là Tết cổ truyền của người Việt." },
+  { tag:"đố vui", topic:"vanhoa", age:"de", q:"Loại bánh hình vuông thường được gói vào dịp Tết ở miền Bắc là bánh gì?", opts:["Bánh chưng","Bánh tét","Bánh trung thu","Bánh giò"], correct:0,
+    explain:"Chính xác, đó là bánh chưng - món bánh truyền thống ngày Tết ở miền Bắc." },
+  { tag:"đố vui", topic:"vanhoa", age:"de", q:"Quốc kỳ Việt Nam có nền màu gì và hình gì ở giữa?", opts:["Nền xanh, hình mặt trời","Nền đỏ, ngôi sao vàng","Nền vàng, ngôi sao đỏ","Nền trắng, hình trái tim"], correct:1,
+    explain:"Đúng rồi, quốc kỳ Việt Nam có nền đỏ với ngôi sao vàng năm cánh ở giữa." },
+  { tag:"đố vui", topic:"vanhoa", age:"de", q:"Thủ đô của Việt Nam là thành phố nào?", opts:["Hà Nội","TP. Hồ Chí Minh","Đà Nẵng","Huế"], correct:0,
+    explain:"Chính xác, thủ đô của Việt Nam là Hà Nội." }
+];
+
+const TOPICS = [
+  { id:'all', label:'✨ Tất cả' },
+  { id:'dongvat', label:'🐾 Động vật' },
+  { id:'tunhien', label:'🌍 Thiên nhiên' },
+  { id:'toanhoc', label:'🔢 Toán học' },
+  { id:'domeo', label:'🎩 Đố mẹo' },
+  { id:'vanhoa', label:'🎎 Văn hoá' }
+];
+const AGES = [
+  { id:'all', label:'✨ Tất cả' },
+  { id:'de', label:'🌱 3–5 tuổi' },
+  { id:'vua', label:'🌟 6–8 tuổi' },
+  { id:'kho', label:'🚀 9–12 tuổi' }
+];
+
+/* ================= TRẠNG THÁI ỨNG DỤNG ================= */
+let activeQuestions = [];   // bộ câu hỏi đang chơi (sau khi lọc/xáo trộn)
+let current = 0;
+let score = 0;
+let results = [];
+let userAnswers = [];
+let liveAnswered = false;
+let viewState = 'setup';    // 'setup' | 'quiz' | 'end' | 'report' | 'review'
+let preReview = null;
+
+let selectedTopic = 'all';
+let selectedAge = 'all';
+let selectedCount = 10;
+let randomEnabled = true;
+
+const cardEl = document.getElementById('quizCard');
+const progressEl = document.getElementById('progress');
+const scoreboardEl = document.getElementById('scoreboard');
+const scoreEl = document.getElementById('score');
+const bubbleEl = document.getElementById('bubble');
+const subtitleEl = document.getElementById('subtitle');
+const foxEl = document.getElementById('fox');
+const mouthEl = document.getElementById('foxMouth');
+
+function setFoxMouth(state){
+  if(state === 'happy') mouthEl.setAttribute('d','M50 88 Q60 100 70 88');
+  else if(state === 'sad') mouthEl.setAttribute('d','M52 94 Q60 86 68 94');
+  else mouthEl.setAttribute('d','M52 90 Q60 96 68 90');
+}
+
+/* ================= MÀN HÌNH THIẾT LẬP ================= */
+function getFilteredPool(){
+  return questions.filter(q =>
+    (selectedTopic === 'all' || q.topic === selectedTopic) &&
+    (selectedAge === 'all' || q.age === selectedAge)
+  );
+}
+
+function shuffleArr(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderSetup(){
+  viewState = 'setup';
+  progressEl.innerHTML = '';
+  progressEl.style.display = 'none';
+  scoreboardEl.style.display = 'none';
+  subtitleEl.textContent = 'Chọn chủ đề, độ tuổi rồi cùng Cáo Tí đố vui nào!';
+  setFoxMouth('normal');
+  bubbleEl.textContent = 'Chọn chế độ chơi rồi bắt đầu nào!';
+
+  const poolSize = getFilteredPool().length;
+  const baseCounts = [5, 10, 15, 20].filter(n => n < poolSize);
+  if(selectedCount !== 'all' && !baseCounts.includes(selectedCount) && selectedCount !== poolSize){
+    selectedCount = baseCounts.length ? baseCounts[baseCounts.length - 1] : 'all';
+  }
+
+  const topicHtml = TOPICS.map(t =>
+    `<button class="chip ${selectedTopic === t.id ? 'selected' : ''}" data-kind="topic" data-id="${t.id}">${t.label}</button>`
+  ).join('');
+  const ageHtml = AGES.map(a =>
+    `<button class="chip ${selectedAge === a.id ? 'selected' : ''}" data-kind="age" data-id="${a.id}">${a.label}</button>`
+  ).join('');
+  const countHtml = baseCounts.map(n =>
+    `<button class="chip ${selectedCount === n ? 'selected' : ''}" data-kind="count" data-id="${n}">${n} câu</button>`
+  ).join('') + `<button class="chip ${selectedCount === 'all' ? 'selected' : ''}" data-kind="count" data-id="all">Tất cả (${poolSize})</button>`;
+
+  cardEl.innerHTML = `
+    <div class="setup-section">
+      <span class="setup-label">📚 Chủ đề</span>
+      <div class="chip-row">${topicHtml}</div>
+    </div>
+    <div class="setup-section">
+      <span class="setup-label">🎂 Độ tuổi</span>
+      <div class="chip-row">${ageHtml}</div>
+    </div>
+    <div class="setup-section">
+      <span class="setup-label">🔢 Số câu hỏi</span>
+      <div class="chip-row">${poolSize > 0 ? countHtml : '<span class="pool-info">Không có câu hỏi phù hợp</span>'}</div>
+    </div>
+    <div class="setup-section">
+      <div class="toggle-row" id="randomToggleRow">
+        <span class="setup-label" style="margin:0;">🔀 Xáo trộn câu hỏi &amp; đáp án</span>
+        <div class="toggle-switch ${randomEnabled ? 'on' : ''}" id="randomToggle"><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+    <div class="pool-info">${poolSize === 0 ? '⚠️ Không có câu hỏi phù hợp, hãy đổi lựa chọn khác.' : `Có ${poolSize} câu hỏi phù hợp với lựa chọn của bé`}</div>
+    <button class="start-btn" id="startBtn" ${poolSize === 0 ? 'disabled' : ''}>Bắt đầu chơi 🚀</button>
+  `;
+
+  cardEl.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const kind = chip.dataset.kind;
+      let id = chip.dataset.id;
+      if(kind === 'count' && id !== 'all') id = Number(id);
+      if(kind === 'topic') selectedTopic = id;
+      else if(kind === 'age') selectedAge = id;
+      else if(kind === 'count') selectedCount = id;
+      renderSetup();
+    });
+  });
+
+  const toggleRow = document.getElementById('randomToggleRow');
+  if(toggleRow){
+    toggleRow.addEventListener('click', () => {
+      randomEnabled = !randomEnabled;
+      renderSetup();
+    });
+  }
+
+  const startBtn = document.getElementById('startBtn');
+  if(startBtn && poolSize > 0){
+    startBtn.addEventListener('click', startQuiz);
+  }
+}
+
+function startQuiz(){
+  let pool = getFilteredPool();
+  if(randomEnabled) pool = shuffleArr(pool);
+  const n = selectedCount === 'all' ? pool.length : Math.min(selectedCount, pool.length);
+  pool = pool.slice(0, n);
+
+  activeQuestions = pool.map(q => {
+    if(randomEnabled){
+      const order = shuffleArr(q.opts.map((_, idx) => idx));
+      const opts = order.map(idx => q.opts[idx]);
+      const correct = order.indexOf(q.correct);
+      return Object.assign({}, q, { opts, correct });
+    }
+    return q;
+  });
+
+  current = 0; score = 0; results = []; userAnswers = []; liveAnswered = false; preReview = null;
+  scoreEl.textContent = 0;
+  progressEl.style.display = '';
+  scoreboardEl.style.display = '';
+  subtitleEl.textContent = `Cùng Cáo Tí giải ${activeQuestions.length} câu đố siêu vui nào!`;
+  document.getElementById('totalQ').textContent = activeQuestions.length;
+  renderQuestion();
+}
+
+/* ================= TIẾN TRÌNH (CÁC NỐT) ================= */
+function buildProgress(){
+  progressEl.innerHTML = '';
+  activeQuestions.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    if(viewState === 'quiz' && i === current) d.classList.add('current');
+    if(results[i] === true) d.classList.add('done');
+    if(results[i] === false) d.classList.add('wrong');
+    if(results[i] !== undefined){
+      d.classList.add('clickable');
+      d.title = `Xem lại câu ${i + 1}`;
+      d.addEventListener('click', () => openReview(i));
+    }
+    progressEl.appendChild(d);
+  });
+}
+
+/* ================= CÂU HỎI ĐANG CHƠI (LIVE) ================= */
+function renderQuestion(){
+  viewState = 'quiz';
+  liveAnswered = false;
+  buildProgress();
+  setFoxMouth('normal');
+  bubbleEl.textContent = "Bé chọn đáp án đúng nhé!";
+  const item = activeQuestions[current];
+  const tagClass = item.tag === 'đố vui' ? 'dovui' : 'domeo';
+  cardEl.innerHTML = `
+    <span class="tag ${tagClass}">${item.tag === 'đố vui' ? '🧠 Đố vui' : '🎩 Đố mẹo'} · Câu ${current + 1}/${activeQuestions.length}</span>
+    <div class="question">${item.q}</div>
+    <div class="options" id="optsWrap"></div>
+    <div class="explain" id="explainBox"></div>
+    <button class="next-btn" id="nextBtn">${current === activeQuestions.length - 1 ? 'Xem kết quả 🎉' : 'Câu tiếp theo ➜'}</button>
+  `;
+  const optsWrap = document.getElementById('optsWrap');
+  item.opts.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = opt;
+    btn.addEventListener('click', () => handleAnswer(idx));
+    optsWrap.appendChild(btn);
+  });
+}
+
+function handleAnswer(idx){
+  const item = activeQuestions[current];
+  const buttons = document.querySelectorAll('#optsWrap .opt');
+  buttons.forEach(b => b.disabled = true);
+
+  const isCorrect = idx === item.correct;
+  results[current] = isCorrect;
+  userAnswers[current] = idx;
+  liveAnswered = true;
+
+  if(isCorrect){
+    buttons[idx].classList.add('correct');
+    score++;
+    scoreEl.textContent = score;
+    bubbleEl.textContent = "Chính xác luôn! Giỏi quá! 🎉";
+    setFoxMouth('happy');
+    foxEl.classList.remove('shake'); foxEl.classList.add('bounce');
+    launchConfetti();
+  } else {
+    buttons[idx].classList.add('incorrect');
+    buttons[item.correct].classList.add('correct');
+    bubbleEl.textContent = "Hơi tiếc, gần đúng rồi đó!";
+    setFoxMouth('sad');
+    foxEl.classList.remove('bounce'); foxEl.classList.add('shake');
+  }
+  setTimeout(() => { foxEl.classList.remove('bounce', 'shake'); }, 550);
+
+  const explainBox = document.getElementById('explainBox');
+  explainBox.textContent = "💡 " + item.explain;
+  explainBox.classList.add('show');
+
+  document.getElementById('nextBtn').classList.add('show');
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    current++;
+    if(current < activeQuestions.length){
+      renderQuestion();
+    } else {
+      renderEnd();
+    }
+  }, { once: true });
+
+  buildProgress();
+}
+
+/* ================= XEM LẠI 1 CÂU (từ nốt hoặc báo cáo) ================= */
+function openReview(index){
+  if(results[index] === undefined) return;
+  if(viewState !== 'review'){
+    preReview = { view: viewState };
+  }
+  viewState = 'review';
+  renderReview(index);
+}
+
+function renderReview(index){
+  buildProgress();
+  const item = activeQuestions[index];
+  const chosenIdx = userAnswers[index];
+  const isCorrect = results[index];
+  const tagClass = item.tag === 'đố vui' ? 'dovui' : 'domeo';
+
+  setFoxMouth(isCorrect ? 'happy' : 'sad');
+  bubbleEl.textContent = isCorrect ? "Câu này bé làm đúng rồi nè!" : "Xem lại đáp án đúng nhé!";
+
+  cardEl.innerHTML = `
+    <span class="tag ${tagClass}">${item.tag === 'đố vui' ? '🧠 Đố vui' : '🎩 Đố mẹo'} · Câu ${index + 1}/${activeQuestions.length}<span class="review-badge">👀 Xem lại</span></span>
+    <div class="question">${item.q}</div>
+    <div class="options" id="optsWrap"></div>
+    <div class="explain show">💡 ${item.explain}</div>
+    <button class="close-btn" id="closeReviewBtn">Đóng</button>
+  `;
+  const optsWrap = document.getElementById('optsWrap');
+  item.opts.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = opt;
+    btn.disabled = true;
+    if(idx === item.correct) btn.classList.add('correct');
+    else if(idx === chosenIdx) btn.classList.add('incorrect');
+    optsWrap.appendChild(btn);
+  });
+
+  document.getElementById('closeReviewBtn').addEventListener('click', closeReview);
+}
+
+function closeReview(){
+  const back = preReview ? preReview.view : 'quiz';
+  preReview = null;
+  if(back === 'end'){
+    renderEnd();
+  } else if(back === 'report'){
+    renderReport();
+  } else {
+    viewState = 'quiz';
+    if(liveAnswered){
+      renderLiveAnswered();
+    } else {
+      renderQuestion();
+    }
+  }
+}
+
+function renderLiveAnswered(){
+  buildProgress();
+  const item = activeQuestions[current];
+  const chosenIdx = userAnswers[current];
+  const isCorrect = results[current];
+  const tagClass = item.tag === 'đố vui' ? 'dovui' : 'domeo';
+
+  setFoxMouth(isCorrect ? 'happy' : 'sad');
+  bubbleEl.textContent = isCorrect ? "Chính xác luôn! Giỏi quá! 🎉" : "Hơi tiếc, gần đúng rồi đó!";
+
+  cardEl.innerHTML = `
+    <span class="tag ${tagClass}">${item.tag === 'đố vui' ? '🧠 Đố vui' : '🎩 Đố mẹo'} · Câu ${current + 1}/${activeQuestions.length}</span>
+    <div class="question">${item.q}</div>
+    <div class="options" id="optsWrap"></div>
+    <div class="explain show">💡 ${item.explain}</div>
+    <button class="next-btn show" id="nextBtn">${current === activeQuestions.length - 1 ? 'Xem kết quả 🎉' : 'Câu tiếp theo ➜'}</button>
+  `;
+  const optsWrap = document.getElementById('optsWrap');
+  item.opts.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = opt;
+    btn.disabled = true;
+    if(idx === item.correct) btn.classList.add('correct');
+    else if(idx === chosenIdx) btn.classList.add('incorrect');
+    optsWrap.appendChild(btn);
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    current++;
+    if(current < activeQuestions.length){
+      renderQuestion();
+    } else {
+      renderEnd();
+    }
+  }, { once: true });
+}
+
+/* ================= MÀN HÌNH KẾT THÚC ================= */
+function renderEnd(){
+  viewState = 'end';
+  buildProgress();
+  let emoji, title, msg;
+  const ratio = score / activeQuestions.length;
+  if(ratio >= 0.8){ emoji = '🏆'; title = 'Siêu sao đố vui!'; msg = 'Bé giỏi quá, gần như đúng hết luôn!'; setFoxMouth('happy'); bubbleEl.textContent = 'Cáo Tí tự hào về bé lắm!'; }
+  else if(ratio >= 0.5){ emoji = '🌟'; title = 'Làm rất tốt!'; msg = 'Bé trả lời khá nhiều câu đúng đó, cố thêm chút nữa nha!'; setFoxMouth('happy'); bubbleEl.textContent = 'Chơi lại để đạt điểm cao hơn nhé!'; }
+  else { emoji = '🌱'; title = 'Cố lên nào!'; msg = 'Không sao đâu, chơi lại vài lần là bé sẽ giỏi hơn ngay!'; setFoxMouth('normal'); bubbleEl.textContent = 'Cáo Tí tin bé làm được!'; }
+
+  cardEl.innerHTML = `
+    <div class="end-card">
+      <div class="end-emoji">${emoji}</div>
+      <div class="end-title">${title}</div>
+      <div class="end-msg">${msg}<br>Bé đạt <strong>${score}/${activeQuestions.length}</strong> điểm.</div>
+      <button class="report-btn" id="reportBtn">📋 Xem báo cáo chi tiết</button>
+      <button class="restart-btn" id="restartBtn">Chơi lại từ đầu 🔄</button>
+      <button class="setup-btn" id="changeSetupBtn">🔧 Đổi chủ đề / độ tuổi</button>
+    </div>
+  `;
+  document.getElementById('reportBtn').addEventListener('click', renderReport);
+  document.getElementById('restartBtn').addEventListener('click', restartSameSet);
+  document.getElementById('changeSetupBtn').addEventListener('click', renderSetup);
+}
+
+function restartSameSet(){
+  current = 0; score = 0; results = []; userAnswers = []; liveAnswered = false; preReview = null;
+  scoreEl.textContent = 0;
+  renderQuestion();
+}
+
+/* ================= MÀN HÌNH BÁO CÁO ================= */
+function renderReport(){
+  viewState = 'report';
+  buildProgress();
+  setFoxMouth('normal');
+  bubbleEl.textContent = "Bấm vào từng câu để xem lại nhé!";
+
+  const rows = activeQuestions.map((item, i) => {
+    const ok = results[i];
+    const icon = ok === undefined ? '⬜' : (ok ? '✅' : '❌');
+    const shortQ = item.q.length > 70 ? item.q.slice(0, 70) + '…' : item.q;
+    return `<button class="report-item" data-idx="${i}">
+        <span class="report-icon">${icon}</span>
+        <span>
+          <span class="report-q">Câu ${i + 1}. ${shortQ}</span>
+          <div class="report-meta">${ok === undefined ? 'Chưa trả lời' : (ok ? 'Trả lời đúng' : 'Trả lời sai')}</div>
+          <div class="report-answer">✔ Đáp án đúng: ${item.opts[item.correct]}</div>
+        </span>
+      </button>`;
+  }).join('');
+
+  cardEl.innerHTML = `
+    <div class="report-header">📋 Báo cáo kết quả — ${score}/${activeQuestions.length} điểm</div>
+    <div class="report-list">${rows}</div>
+    <div class="report-actions">
+      <button class="close-btn" id="backToEndBtn">⬅ Quay lại</button>
+      <button class="restart-btn" id="restartBtn2">Chơi lại 🔄</button>
+    </div>
+  `;
+
+  cardEl.querySelectorAll('.report-item').forEach(btn => {
+    const i = Number(btn.dataset.idx);
+    if(results[i] === undefined){
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'default';
+    } else {
+      btn.addEventListener('click', () => openReview(i));
+    }
+  });
+
+  document.getElementById('backToEndBtn').addEventListener('click', renderEnd);
+  document.getElementById('restartBtn2').addEventListener('click', restartSameSet);
+}
+
+/* ================= HIỆU ỨNG CONFETTI ================= */
+function launchConfetti(){
+  const colors = ['#FF6F59', '#FFC93C', '#43C6AC', '#FF8FAB', '#2D2A6E'];
+  for(let i = 0; i < 26; i++){
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+    c.style.width = (6 + Math.random() * 6) + 'px';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3000);
+  }
+}
+
+renderSetup();
+</script>
+</body>
+</html>
