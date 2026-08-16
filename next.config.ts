@@ -4,6 +4,9 @@ const isGitHubPages = process.env.GITHUB_ACTIONS === "true";
 const basePath = process.env.BASE_PATH || "";
 
 const localConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   async rewrites() {
     return {
       beforeFiles: [
@@ -27,6 +30,9 @@ const githubPagesConfig: NextConfig = {
   },
   typescript: {
     tsconfigPath: "tsconfig.pages.json",
+  },
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
 };
 

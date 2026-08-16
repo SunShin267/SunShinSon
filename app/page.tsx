@@ -2,6 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { AppHeader } from "./components/AppHeader";
+import { SunLogo } from "./components/SunLogo";
+import { clearChildName, readChildName, saveChildName } from "./lib/child-session";
+import { navigateInternal } from "./lib/navigation";
+
 type Topic = {
   id: string;
   title: string;
@@ -66,17 +71,6 @@ const topics: Topic[] = [
   },
 ];
 
-function SunLogo({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className={`brand ${compact ? "brand--compact" : ""}`}>
-      <span className="sun-mark" aria-hidden="true">
-        <span className="sun-face">•ᴗ•</span>
-      </span>
-      <span className="brand-name">SunShinSon</span>
-    </div>
-  );
-}
-
 function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
   const [name, setName] = useState("");
 
@@ -130,19 +124,6 @@ function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
   );
 }
 
-function AppHeader({ name, onHome, onLogout }: { name: string; onHome: () => void; onLogout: () => void }) {
-  return (
-    <header className="app-header">
-      <button className="logo-button" onClick={onHome} aria-label="Về trang chủ"><SunLogo compact /></button>
-      <div className="header-actions">
-        <div className="mini-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</div>
-        <span className="header-name">{name}</span>
-        <button className="logout-button" onClick={onLogout} aria-label="Đăng xuất" title="Đăng xuất">↗</button>
-      </div>
-    </header>
-  );
-}
-
 function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (topic: Topic) => void; onLogout: () => void }) {
   return (
     <div className="app-shell">
@@ -173,9 +154,18 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
                 key={topic.id}
                 onClick={() => {
                   if (topic.id === "do-vui") {
-                    window.location.assign(
-                      process.env.NEXT_PUBLIC_QUIZ_PATH || "/do-vui-do-meo",
-                    );
+                    window.location.assign(process.env.NEXT_PUBLIC_QUIZ_PATH || "/do-vui-do-meo");
+                    return;
+                  }
+
+                  const gamePaths: Record<string, string> = {
+                    "tim-so": "/tim-so",
+                    "co-caro": "/co-caro",
+                    "co-vua": "/co-vua",
+                  };
+                  const gamePath = gamePaths[topic.id];
+                  if (gamePath) {
+                    navigateInternal(gamePath);
                     return;
                   }
 
@@ -248,17 +238,21 @@ export default function Home() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setName(window.localStorage.getItem("sunshinson-name") || "");
-    setReady(true);
+    const timer = window.setTimeout(() => {
+      setName(readChildName());
+      setReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function login(nextName: string) {
-    window.localStorage.setItem("sunshinson-name", nextName);
-    setName(nextName);
+    const cleanName = nextName.trim();
+    if (saveChildName(cleanName)) setName(cleanName);
   }
 
   function logout() {
-    window.localStorage.removeItem("sunshinson-name");
+    clearChildName();
     setName("");
     setActiveTopic(null);
   }
