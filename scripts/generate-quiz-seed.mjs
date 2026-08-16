@@ -23,6 +23,7 @@ const parseQuestionArray = (arrayLiteral, label) => {
       {
         timeout: 1_000,
         contextCodeGeneration: { strings: false, wasm: false },
+        microtaskMode: "afterEvaluate",
       },
     );
   } catch (error) {
