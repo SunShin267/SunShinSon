@@ -167,6 +167,66 @@ function invalidLoginResponse(): Response {
   return errorResponse(401, "invalid_credentials", "Thông tin đăng nhập không hợp lệ.");
 }
 
+interface ReservedLoginAttempt {
+  failed_count: number;
+  blocked_until: number | null;
+}
+
+async function reserveLoginAttempt(
+  env: Env,
+  key: string,
+  now: number,
+): Promise<ReservedLoginAttempt> {
+  const windowCutoff = now - LOGIN_WINDOW_SECONDS;
+  const blockedUntil = now + LOGIN_BLOCK_SECONDS;
+  const attempt = await env.DB.prepare(`
+    INSERT INTO admin_login_attempts (
+      client_key,
+      failed_count,
+      window_started_at,
+      blocked_until
+    ) VALUES (?, 1, ?, NULL)
+    ON CONFLICT(client_key) DO UPDATE SET
+      failed_count = CASE
+        WHEN admin_login_attempts.blocked_until > ?
+          THEN admin_login_attempts.failed_count + 1
+        WHEN admin_login_attempts.window_started_at <= ? THEN 1
+        ELSE admin_login_attempts.failed_count + 1
+      END,
+      window_started_at = CASE
+        WHEN admin_login_attempts.blocked_until > ?
+          THEN admin_login_attempts.window_started_at
+        WHEN admin_login_attempts.window_started_at <= ? THEN excluded.window_started_at
+        ELSE admin_login_attempts.window_started_at
+      END,
+      blocked_until = CASE
+        WHEN admin_login_attempts.blocked_until > ?
+          THEN admin_login_attempts.blocked_until
+        WHEN admin_login_attempts.window_started_at <= ? THEN NULL
+        WHEN admin_login_attempts.failed_count + 1 >= ? THEN ?
+        ELSE NULL
+      END
+    RETURNING failed_count, blocked_until
+  `).bind(
+    key,
+    now,
+    now,
+    windowCutoff,
+    now,
+    windowCutoff,
+    now,
+    windowCutoff,
+    MAX_FAILED_ATTEMPTS,
+    blockedUntil,
+  ).first<ReservedLoginAttempt>();
+
+  if (!attempt) {
+    throw new Error("Failed to reserve admin login attempt");
+  }
+
+  return attempt;
+}
+
 export function requireSameOrigin(request: Request): Response | null {
   const requestOrigin = new URL(request.url).origin;
   if (request.headers.get("Origin") !== requestOrigin) {
@@ -226,20 +286,19 @@ export async function handleAdminLogin(request: Request, env: Env): Promise<Resp
     lt(adminLoginAttempts.windowStartedAt, now - LOGIN_ATTEMPT_RETENTION_SECONDS),
   );
 
-  const [storedAttempt] = await db
-    .select()
-    .from(adminLoginAttempts)
-    .where(eq(adminLoginAttempts.clientKey, key))
-    .limit(1);
+  const reservedAttempt = await reserveLoginAttempt(env, key, now);
 
-  if (storedAttempt?.blockedUntil !== null && storedAttempt?.blockedUntil !== undefined
-    && storedAttempt.blockedUntil > now) {
+  if (
+    reservedAttempt.failed_count > MAX_FAILED_ATTEMPTS
+    && reservedAttempt.blocked_until !== null
+    && reservedAttempt.blocked_until > now
+  ) {
     return errorResponse(
       429,
       "too_many_login_attempts",
       "Quá nhiều lần đăng nhập không thành công. Vui lòng thử lại sau.",
       undefined,
-      { "Retry-After": String(storedAttempt.blockedUntil - now) },
+      { "Retry-After": String(reservedAttempt.blocked_until - now) },
     );
   }
 
@@ -253,25 +312,6 @@ export async function handleAdminLogin(request: Request, env: Env): Promise<Resp
       { "Set-Cookie": sessionCookie(token, SESSION_MAX_AGE_SECONDS) },
     );
   }
-
-  const isCurrentWindow = storedAttempt !== undefined
-    && storedAttempt.windowStartedAt > now - LOGIN_WINDOW_SECONDS;
-  const failedCount = isCurrentWindow ? storedAttempt.failedCount + 1 : 1;
-  const windowStartedAt = isCurrentWindow ? storedAttempt.windowStartedAt : now;
-  const blockedUntil = failedCount >= MAX_FAILED_ATTEMPTS ? now + LOGIN_BLOCK_SECONDS : null;
-
-  await db
-    .insert(adminLoginAttempts)
-    .values({
-      clientKey: key,
-      failedCount,
-      windowStartedAt,
-      blockedUntil,
-    })
-    .onConflictDoUpdate({
-      target: adminLoginAttempts.clientKey,
-      set: { failedCount, windowStartedAt, blockedUntil },
-    });
 
   return invalidLoginResponse();
 }
