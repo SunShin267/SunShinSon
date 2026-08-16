@@ -69,7 +69,7 @@ const validateQuestion = (question, index) => {
 
 const html = await readFile(sourcePath, "utf8");
 const match = html.match(
-  /const questions = (\[[\s\S]*?\n\]);[\s\S]*?questions\.push\(\.\.\.(\[[\s\S]*?\n\])\);/
+  /const fallbackQuestions = (\[[\s\S]*?\n\]);[\s\S]*?fallbackQuestions\.push\(\.\.\.(\[[\s\S]*?\n\])\);/
 );
 
 if (!match) {
