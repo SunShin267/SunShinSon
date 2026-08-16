@@ -86,7 +86,7 @@ function terminalScore(state: GomokuState, computer: Stone, depth: number) {
   return state.winner.stone === computer ? 10_000_000 + depth : -10_000_000 - depth;
 }
 
-function negamax(
+function minimax(
   state: GomokuState,
   computer: Stone,
   depth: number,
@@ -99,18 +99,24 @@ function negamax(
   if (performance.now() >= deadline) throw new DOMException("Computer search deadline", "TimeoutError");
   if (state.winner || state.draw) return terminalScore(state, computer, depth);
   if (depth === 0) {
-    const best = rankCandidates(state, computer)[0]?.score ?? 0;
+    const attack = rankCandidates(state, computer)[0]?.score ?? 0;
     const threat = rankCandidates(state, otherStone(computer))[0]?.score ?? 0;
-    return best - threat * 0.92;
+    return attack - threat * 0.92;
   }
 
-  let value = -Infinity;
+  const maximizing = state.turn === computer;
+  let value = maximizing ? -Infinity : Infinity;
   const candidates = rankCandidates(state, state.turn).slice(0, depth >= 2 ? 8 : 10);
   for (const candidate of candidates) {
     const child = playMove(state, candidate.coord, 0);
-    const score = -negamax(child, computer, depth - 1, -beta, -alpha, deadline, signal);
-    value = Math.max(value, score);
-    alpha = Math.max(alpha, score);
+    const score = minimax(child, computer, depth - 1, alpha, beta, deadline, signal);
+    if (maximizing) {
+      value = Math.max(value, score);
+      alpha = Math.max(alpha, score);
+    } else {
+      value = Math.min(value, score);
+      beta = Math.min(beta, score);
+    }
     if (alpha >= beta) break;
   }
   return Number.isFinite(value) ? value : 0;
@@ -142,20 +148,24 @@ export async function chooseComputerMove(
     choice = ranked.slice(0, Math.min(4, ranked.length))[Math.floor(random() * Math.min(4, ranked.length))].coord;
   } else {
     const deadline = performance.now() + Math.min(900, Math.max(120, options.budgetMs ?? 700));
-    let best = ranked[0];
+    let bestCoord = ranked[0].coord;
+    let bestScore = -Infinity;
     for (const candidate of ranked.slice(0, 12)) {
       assertActive(signal);
       if (performance.now() >= deadline) break;
       try {
         const stateAfterMove = playMove(state, candidate.coord, 0);
-        const score = -negamax(stateAfterMove, state.turn, 2, -Infinity, Infinity, deadline, signal);
-        if (score > best.score) best = { coord: candidate.coord, score };
+        const score = minimax(stateAfterMove, state.turn, 2, -Infinity, Infinity, deadline, signal);
+        if (score > bestScore) {
+          bestCoord = candidate.coord;
+          bestScore = score;
+        }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error;
         break;
       }
     }
-    choice = best.coord;
+    choice = bestCoord;
   }
 
   assertActive(signal);

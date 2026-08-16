@@ -1,8 +1,27 @@
 import { chooseComputerMove } from "./gomoku-ai";
+import { isLegalMove } from "./gomoku-engine";
 import type { Coord, Difficulty, GomokuState } from "./gomoku-types";
 
 type ClientOptions = { signal?: AbortSignal; budgetMs?: number };
 type WorkerResponse = { coord?: Coord; error?: { name: string; message: string } };
+
+export function findLegalFallbackMove(state: GomokuState): Coord | null {
+  const anchor = state.moves[state.moves.length - 1]?.coord ?? [Math.floor(state.size / 2), Math.floor(state.size / 2)];
+  for (let radius = 0; radius < state.size; radius += 1) {
+    const minX = Math.max(0, anchor[0] - radius);
+    const maxX = Math.min(state.size - 1, anchor[0] + radius);
+    const minY = Math.max(0, anchor[1] - radius);
+    const maxY = Math.min(state.size - 1, anchor[1] + radius);
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (radius > 0 && x > minX && x < maxX && y > minY && y < maxY) continue;
+        const coord: Coord = [x, y];
+        if (isLegalMove(state, coord)) return coord;
+      }
+    }
+  }
+  return null;
+}
 
 export function requestComputerMove(state: GomokuState, level: Difficulty, options: ClientOptions = {}): Promise<Coord> {
   if (typeof Worker === "undefined") return chooseComputerMove(state, level, options);

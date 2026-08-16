@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameShell } from "../components/GameShell";
 import { readChildName } from "../lib/child-session";
-import { requestComputerMove } from "./gomoku-ai-client";
+import { findLegalFallbackMove, requestComputerMove } from "./gomoku-ai-client";
 import { expandBoard } from "./board-viewport";
 import { createGomokuGame, playMove, undoTurn } from "./gomoku-engine";
 import { createCompletedRecord, loadGomokuHistory, recordCompletedGame, type GomokuGameRecord } from "./gomoku-history";
@@ -66,14 +66,20 @@ export function GomokuGame() {
         .then((coord) => {
           if (controller.signal.aborted) return;
           const next = playMove(snapshot, coord);
-          if (next === snapshot) return;
+          if (next === snapshot) throw new Error("Computer worker returned an illegal move");
           finishIfNeeded(next, config);
+          setThinking(false);
           setGame((current) => current === snapshot ? next : current);
         })
         .catch((error: unknown) => {
-          if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Gomoku computer move failed", error);
-        })
-        .finally(() => { if (!controller.signal.aborted) setThinking(false); });
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          console.error("Gomoku computer move failed; using a legal fallback", error);
+          const fallback = findLegalFallbackMove(snapshot);
+          const next = fallback ? playMove(snapshot, fallback) : { ...snapshot, draw: true };
+          finishIfNeeded(next, config);
+          setThinking(false);
+          setGame((current) => current === snapshot ? next : current);
+        });
     }, 240);
     return () => {
       window.clearTimeout(timer);

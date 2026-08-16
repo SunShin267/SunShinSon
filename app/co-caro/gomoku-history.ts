@@ -87,9 +87,15 @@ export function normalizeName(name: string) {
   return name.trim().replace(/\s+/g, " ").normalize("NFKC").toLocaleLowerCase("vi");
 }
 
+function compareNormalizedNames(a: string, b: string) {
+  const baseOrder = a.localeCompare(b, "vi", { sensitivity: "base" });
+  if (baseOrder !== 0) return baseOrder;
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+
 export function normalizePair(first: string, second: string) {
   return [normalizeName(first), normalizeName(second)]
-    .sort((a, b) => a.localeCompare(b, "vi", { sensitivity: "base" }))
+    .sort(compareNormalizedNames)
     .join("::");
 }
 
@@ -157,6 +163,12 @@ export function getPairStats(records: readonly GomokuGameRecord[], first: string
     .filter((record) => record.mode === "local" && normalizePair(record.players[0].name, record.players[1].name) === pairKey)
     .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
 
+  function statIndexFor(player: PlayerConfig): 0 | 1 {
+    const playerName = normalizeName(player.name);
+    if (normalizedNames[0] === normalizedNames[1]) return player.id === "p1" ? 0 : 1;
+    return playerName === normalizedNames[0] ? 0 : 1;
+  }
+
   for (const record of matching) {
     if (record.result === "draw") {
       draws += 1;
@@ -164,17 +176,15 @@ export function getPairStats(records: readonly GomokuGameRecord[], first: string
       stats[1].currentWinStreak = 0;
       continue;
     }
-    const winnerName = normalizeName(record.players.find((player) => player.id === record.result)?.name ?? "");
-    for (const player of stats) {
-      if (player.name === winnerName) {
-        player.wins += 1;
-        player.currentWinStreak += 1;
-        player.bestWinStreak = Math.max(player.bestWinStreak, player.currentWinStreak);
-      } else {
-        player.losses += 1;
-        player.currentWinStreak = 0;
-      }
-    }
+    const winner = record.players.find((player) => player.id === record.result);
+    if (!winner) continue;
+    const winnerIndex = statIndexFor(winner);
+    const loserIndex = winnerIndex === 0 ? 1 : 0;
+    stats[winnerIndex].wins += 1;
+    stats[winnerIndex].currentWinStreak += 1;
+    stats[winnerIndex].bestWinStreak = Math.max(stats[winnerIndex].bestWinStreak, stats[winnerIndex].currentWinStreak);
+    stats[loserIndex].losses += 1;
+    stats[loserIndex].currentWinStreak = 0;
   }
 
   return { pairKey, games: matching.length, draws, players: stats };

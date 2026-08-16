@@ -48,7 +48,6 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     dragged.current = false;
     gesture.current = {
@@ -64,13 +63,21 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.current.size > 1 && gesture.current.pinchDistance) {
       const distance = pointerDistance();
-      if (Math.abs(distance - gesture.current.pinchDistance) > 3) dragged.current = true;
+      if (Math.abs(distance - gesture.current.pinchDistance) <= 3 && !dragged.current) return;
+      if (!dragged.current) {
+        dragged.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       updateZoom(gesture.current.startZoom * distance / gesture.current.pinchDistance);
       return;
     }
     const x = gesture.current.startPan.x + event.clientX - gesture.current.startPoint.x;
     const y = gesture.current.startPan.y + event.clientY - gesture.current.startPoint.y;
-    if (Math.hypot(x - gesture.current.startPan.x, y - gesture.current.startPan.y) > 5) dragged.current = true;
+    if (Math.hypot(x - gesture.current.startPan.x, y - gesture.current.startPan.y) <= 5 && !dragged.current) return;
+    if (!dragged.current) {
+      dragged.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
     setPan({ x, y });
   }
 
