@@ -34,13 +34,24 @@ function isMove(value: unknown): value is ChessMoveInput {
 function isRecord(value: unknown): value is ChessGameRecord {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<ChessGameRecord>;
-  return typeof record.id === "string" && typeof record.startedAt === "string" && typeof record.completedAt === "string" &&
+  const validShape = typeof record.id === "string" && typeof record.startedAt === "string" && typeof record.completedAt === "string" &&
     Boolean(record.players && typeof record.players.white === "string" && typeof record.players.black === "string") &&
     (record.mode === "local" || record.mode === "computer") && ["white", "black", "draw"].includes(record.result ?? "") &&
     typeof record.reason === "string" && (record.clockInitialMs === null || typeof record.clockInitialMs === "number") &&
     typeof record.pgn === "string" && record.pgn.length < 200_000 && Array.isArray(record.moves) && record.moves.length <= 1000 && record.moves.every(isMove) &&
     Array.isArray(record.san) && record.san.length === record.moves.length && record.san.every((move) => typeof move === "string") &&
     typeof record.initialFen === "string" && typeof record.finalFen === "string";
+  if (!validShape) return false;
+  const candidate = record as ChessGameRecord;
+
+  try {
+    let reconstructed = createChessGame(candidate.initialFen);
+    for (const move of candidate.moves) reconstructed = makeChessMove(reconstructed, move);
+    return reconstructed.fen === candidate.finalFen && reconstructed.pgn === candidate.pgn &&
+      reconstructed.san.length === candidate.san.length && reconstructed.san.every((move, index) => move === candidate.san[index]);
+  } catch {
+    return false;
+  }
 }
 
 export function loadChessHistory() {
@@ -59,19 +70,22 @@ export function recordChessGame(record: ChessGameRecord) {
 
 export function deleteChessGame(id: string) {
   const records = loadChessHistory().filter((record) => record.id !== id);
-  saveChessHistory(records);
-  return records;
+  return { records, saved: saveChessHistory(records) };
 }
 
 export function clearChessHistory() {
-  saveChessHistory([]);
-  return [] as ChessGameRecord[];
+  const records: ChessGameRecord[] = [];
+  return { records, saved: saveChessHistory(records) };
 }
 
-export function replayChessPly(record: ChessGameRecord, ply: number): ChessGame {
-  let game = createChessGame(record.initialFen);
-  for (const move of record.moves.slice(0, Math.max(0, Math.min(ply, record.moves.length)))) game = makeChessMove(game, move);
-  return game;
+export function replayChessPly(record: ChessGameRecord, ply: number): ChessGame | null {
+  try {
+    let game = createChessGame(record.initialFen);
+    for (const move of record.moves.slice(0, Math.max(0, Math.min(ply, record.moves.length)))) game = makeChessMove(game, move);
+    return game;
+  } catch {
+    return null;
+  }
 }
 
 export function uciMove(value: string): ChessMoveInput | null {
