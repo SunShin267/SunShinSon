@@ -142,12 +142,37 @@
 
   /* progress */
   .progress-row{ display:flex; gap:6px; justify-content:center; margin:10px 0 20px; flex-wrap:wrap; }
-  .dot{ width:12px; height:12px; border-radius:50%; background:#E6E1F5; border:2px solid #cfc9ea; transition:.2s; }
+  .dot{ position:relative; width:12px; height:12px; border-radius:50%; background:#E6E1F5; border:2px solid #cfc9ea; transition:.2s; }
   .dot.done{ background:var(--mint); border-color:var(--mint); }
   .dot.wrong{ background:var(--coral); border-color:var(--coral); }
   .dot.current{ background:var(--yellow); border-color:var(--ink); transform:scale(1.25); }
   .dot.clickable{ cursor:pointer; }
   .dot.clickable:hover{ transform:scale(1.35); }
+  .dot::after{
+    content:attr(data-tooltip);
+    position:absolute;
+    left:50%;
+    bottom:calc(100% + 8px);
+    transform:translateX(-50%) translateY(3px);
+    background:var(--ink);
+    color:#fff;
+    padding:5px 8px;
+    border-radius:8px;
+    font:700 12px/1.2 'Nunito',sans-serif;
+    white-space:nowrap;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    z-index:20;
+    transition:opacity .15s ease, transform .15s ease, visibility .15s ease;
+  }
+  .dot:hover::after,
+  .dot:focus-visible::after{
+    opacity:1;
+    visibility:visible;
+    transform:translateX(-50%) translateY(0);
+  }
+  .dot:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
 
   .scoreboard{
     display:flex; justify-content:center; gap:10px; margin-bottom:18px; font-family:'Baloo 2',sans-serif; font-weight:700;
@@ -868,10 +893,27 @@ function buildProgress(){
     if(viewState === 'quiz' && i === current) d.classList.add('current');
     if(results[i] === true) d.classList.add('done');
     if(results[i] === false) d.classList.add('wrong');
+
+    let status = 'Chưa trả lời';
+    if(results[i] === true) status = 'Đúng';
+    else if(results[i] === false) status = 'Sai';
+    else if(viewState === 'quiz' && i === current) status = 'Hiện tại';
+
+    const label = `Câu ${i + 1} — ${status}`;
+    d.dataset.tooltip = label;
+    d.setAttribute('aria-label', label);
+
     if(results[i] !== undefined){
       d.classList.add('clickable');
-      d.title = `Xem lại câu ${i + 1}`;
+      d.tabIndex = 0;
+      d.setAttribute('role', 'button');
       d.addEventListener('click', () => openReview(i));
+      d.addEventListener('keydown', (event) => {
+        if(event.key === 'Enter' || event.key === ' '){
+          event.preventDefault();
+          openReview(i);
+        }
+      });
     }
     progressEl.appendChild(d);
   });
