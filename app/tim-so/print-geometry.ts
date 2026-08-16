@@ -12,7 +12,6 @@ const PAGE = {
   landscape: { width: 277, height: 190 },
 };
 const HEADER_HEIGHT = 12;
-const LANDSCAPE_PREFERRED_FROM = 200;
 
 export function getPrintGeometry(count: number): PrintGeometry | null {
   if (!Number.isInteger(count) || count < 1 || count > 500) return null;
@@ -26,7 +25,6 @@ export function getPrintGeometry(count: number): PrintGeometry | null {
     const cellHeight = gridHeight / rows;
     return { orientation, columns, rows, cellWidth, cellHeight, fontSize: Math.max(5, Math.min(18, Math.min(cellWidth, cellHeight) * 0.45)) };
   });
-  if (count >= LANDSCAPE_PREFERRED_FROM) return options.find((option) => option.orientation === "landscape")!;
   return options.sort((left, right) => {
     const sizeDifference = Math.min(right.cellWidth, right.cellHeight) - Math.min(left.cellWidth, left.cellHeight);
     if (sizeDifference !== 0) return sizeDifference;
