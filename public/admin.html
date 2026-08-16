@@ -191,7 +191,7 @@
       <form id="login-form" class="login-form" novalidate>
         <div class="field">
           <label for="password">Mật khẩu quản trị</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+          <input id="password" name="password" type="password" autocomplete="current-password" aria-describedby="login-message" required autofocus>
         </div>
         <div id="login-message" class="login-message notice notice-error" role="alert" aria-live="polite"></div>
         <button id="login-submit" class="button button-primary" type="submit">Đăng nhập</button>
@@ -272,49 +272,49 @@
         <div class="form-grid">
           <div class="field">
             <label for="topic">Chủ đề</label>
-            <select id="topic" name="topic" required>
+            <select id="topic" name="topic" aria-describedby="topic-error" required>
               <option value="dongvat">Động vật</option><option value="tunhien">Tự nhiên</option><option value="toanhoc">Toán học</option><option value="domeo">Đố mẹo</option><option value="vanhoa">Văn hoá</option>
             </select>
-            <span class="field-error" data-error-for="topic"></span>
+            <span id="topic-error" class="field-error" data-error-for="topic"></span>
           </div>
           <div class="field">
             <label for="age">Độ khó</label>
-            <select id="age" name="age" required><option value="de">Dễ</option><option value="vua">Vừa</option><option value="kho">Khó</option></select>
-            <span class="field-error" data-error-for="age"></span>
+            <select id="age" name="age" aria-describedby="age-error" required><option value="de">Dễ</option><option value="vua">Vừa</option><option value="kho">Khó</option></select>
+            <span id="age-error" class="field-error" data-error-for="age"></span>
           </div>
           <div class="field">
             <label for="tag">Loại câu hỏi</label>
-            <select id="tag" name="tag" required><option value="đố vui">Đố vui</option><option value="đố mẹo">Đố mẹo</option></select>
-            <span class="field-error" data-error-for="tag"></span>
+            <select id="tag" name="tag" aria-describedby="tag-error" required><option value="đố vui">Đố vui</option><option value="đố mẹo">Đố mẹo</option></select>
+            <span id="tag-error" class="field-error" data-error-for="tag"></span>
           </div>
           <div class="field">
             <label for="correct">Đáp án đúng</label>
-            <select id="correct" name="correct" required><option value="0">Đáp án A</option><option value="1">Đáp án B</option><option value="2">Đáp án C</option><option value="3">Đáp án D</option></select>
-            <span class="field-error" data-error-for="correct"></span>
+            <select id="correct" name="correct" aria-describedby="correct-error" required><option value="0">Đáp án A</option><option value="1">Đáp án B</option><option value="2">Đáp án C</option><option value="3">Đáp án D</option></select>
+            <span id="correct-error" class="field-error" data-error-for="correct"></span>
           </div>
           <div class="field field-wide">
             <label for="question">Nội dung câu hỏi</label>
-            <textarea id="question" name="q" required></textarea>
-            <span class="field-error" data-error-for="q"></span>
+            <textarea id="question" name="q" aria-describedby="q-error" required></textarea>
+            <span id="q-error" class="field-error" data-error-for="q"></span>
           </div>
           <div class="field field-wide">
             <span class="field-label">Bốn đáp án</span>
             <div class="options-grid">
-              <label class="option-label"><span>A</span><input id="option-0" name="option-0" required aria-label="Đáp án A"></label>
-              <label class="option-label"><span>B</span><input id="option-1" name="option-1" required aria-label="Đáp án B"></label>
-              <label class="option-label"><span>C</span><input id="option-2" name="option-2" required aria-label="Đáp án C"></label>
-              <label class="option-label"><span>D</span><input id="option-3" name="option-3" required aria-label="Đáp án D"></label>
+              <label class="option-label"><span>A</span><input id="option-0" name="option-0" aria-describedby="opts-error" required aria-label="Đáp án A"></label>
+              <label class="option-label"><span>B</span><input id="option-1" name="option-1" aria-describedby="opts-error" required aria-label="Đáp án B"></label>
+              <label class="option-label"><span>C</span><input id="option-2" name="option-2" aria-describedby="opts-error" required aria-label="Đáp án C"></label>
+              <label class="option-label"><span>D</span><input id="option-3" name="option-3" aria-describedby="opts-error" required aria-label="Đáp án D"></label>
             </div>
-            <span class="field-error" data-error-for="opts"></span>
+            <span id="opts-error" class="field-error" data-error-for="opts"></span>
           </div>
           <div class="field field-wide">
             <label for="explain">Lời giải thích</label>
-            <textarea id="explain" name="explain" required></textarea>
-            <span class="field-error" data-error-for="explain"></span>
+            <textarea id="explain" name="explain" aria-describedby="explain-error" required></textarea>
+            <span id="explain-error" class="field-error" data-error-for="explain"></span>
           </div>
           <div class="field">
-            <div class="checkbox"><input id="is-active" name="isActive" type="checkbox" checked><label for="is-active">Xuất bản ngay</label></div>
-            <span class="field-error" data-error-for="isActive"></span>
+            <div class="checkbox"><input id="is-active" name="isActive" type="checkbox" aria-describedby="is-active-error" checked><label for="is-active">Xuất bản ngay</label></div>
+            <span id="is-active-error" class="field-error" data-error-for="isActive"></span>
           </div>
         </div>
         <div id="form-message" class="form-message notice notice-error" role="alert" aria-live="polite"></div>
@@ -332,7 +332,7 @@
 
       const TOPIC_LABELS = { dongvat: "Động vật", tunhien: "Tự nhiên", toanhoc: "Toán học", domeo: "Đố mẹo", vanhoa: "Văn hoá" };
       const AGE_LABELS = { de: "Dễ", vua: "Vừa", kho: "Khó" };
-      const state = { questions: [], editingId: null, busy: false };
+      const state = { questions: [], editingId: null, busy: false, loaded: false, modalOpener: null };
 
       const byId = (id) => document.getElementById(id);
       const loginView = byId("login-view");
@@ -356,14 +356,20 @@
         element.classList.toggle("notice-success", Boolean(message) && type === "success");
       }
 
-      function showLogin(message = "") {
+      function showLogin(message = "", type = "error") {
         state.questions = [];
         state.editingId = null;
+        state.loaded = false;
         closeModal();
+        updateStats();
+        questionsBody.replaceChildren();
+        loadingState.hidden = true;
+        tableWrap.hidden = true;
+        emptyState.hidden = true;
         dashboardView.hidden = true;
         loginView.hidden = false;
         passwordInput.value = "";
-        setMessage(loginMessage, message);
+        setMessage(loginMessage, message, type);
         window.setTimeout(() => passwordInput.focus(), 0);
       }
 
@@ -395,25 +401,31 @@
       }
 
       async function loadQuestions() {
-        loadingState.hidden = false;
-        tableWrap.hidden = true;
-        emptyState.hidden = true;
+        const preserveList = state.loaded;
+        if (!preserveList) {
+          loadingState.hidden = false;
+          tableWrap.hidden = true;
+          emptyState.hidden = true;
+        }
         try {
           const response = await api("/api/admin/questions");
           if (!response.ok) throw new Error((await parseError(response)).message);
           const data = await response.json();
           if (!Array.isArray(data)) throw new Error("Dữ liệu câu hỏi không hợp lệ.");
           state.questions = data;
+          state.loaded = true;
           showDashboard();
           updateStats();
           renderQuestions();
           setMessage(pageMessage, "");
+          return true;
         } catch (error) {
           if (!error.sessionExpired) {
             showDashboard();
             loadingState.hidden = true;
             setMessage(pageMessage, error.message || "Không thể tải danh sách câu hỏi.");
           }
+          return false;
         }
       }
 
@@ -506,6 +518,7 @@
       }
 
       function openCreateModal() {
+        state.modalOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         state.editingId = null;
         questionForm.reset();
         byId("is-active").checked = true;
@@ -518,6 +531,7 @@
       }
 
       function openEditModal(question) {
+        state.modalOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         state.editingId = question.id;
         questionForm.reset();
         byId("topic").value = question.topic;
@@ -537,10 +551,17 @@
       }
 
       function closeModal() {
+        const opener = state.modalOpener;
         modal.hidden = true;
         document.body.style.overflow = "";
         state.editingId = null;
+        state.modalOpener = null;
         if (questionForm) clearFieldErrors();
+        if (opener && opener.isConnected) {
+          window.setTimeout(() => {
+            if (!dashboardView.hidden && opener.isConnected) opener.focus();
+          }, 0);
+        }
       }
 
       function formPayload() {
@@ -566,7 +587,7 @@
             body: JSON.stringify({ isActive: !question.isActive }),
           });
           if (!response.ok) throw new Error((await parseError(response)).message);
-          await loadQuestions();
+          if (!(await loadQuestions())) return;
           setMessage(pageMessage, question.isActive ? "Đã ẩn câu hỏi." : "Đã xuất bản câu hỏi.", "success");
         } catch (error) {
           if (!error.sessionExpired) setMessage(pageMessage, error.message || "Không thể cập nhật trạng thái.");
@@ -582,7 +603,7 @@
         try {
           const response = await api(`/api/admin/questions/${question.id}`, { method: "DELETE" });
           if (!response.ok) throw new Error((await parseError(response)).message);
-          await loadQuestions();
+          if (!(await loadQuestions())) return;
           setMessage(pageMessage, `Đã xoá câu hỏi #${question.id}.`, "success");
         } catch (error) {
           if (!error.sessionExpired) setMessage(pageMessage, error.message || "Không thể xoá câu hỏi.");
@@ -633,7 +654,7 @@
             return;
           }
           closeModal();
-          await loadQuestions();
+          if (!(await loadQuestions())) return;
           setMessage(pageMessage, editingId === null ? "Đã thêm câu hỏi mới." : `Đã cập nhật câu hỏi #${editingId}.`, "success");
         } catch (error) {
           if (!error.sessionExpired) setMessage(byId("form-message"), error.message || "Không thể lưu câu hỏi.");
@@ -641,8 +662,18 @@
       });
 
       byId("logout-button").addEventListener("click", async () => {
-        try { await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" }); }
-        finally { showLogin("Bạn đã đăng xuất."); }
+        const logoutButton = byId("logout-button");
+        logoutButton.disabled = true;
+        setMessage(pageMessage, "");
+        try {
+          const response = await api("/api/admin/logout", { method: "POST" });
+          if (!response.ok) throw new Error((await parseError(response)).message);
+          showLogin("Bạn đã đăng xuất.", "success");
+        } catch (error) {
+          if (!error.sessionExpired) setMessage(pageMessage, error.message || "Không thể đăng xuất. Vui lòng thử lại.");
+        } finally {
+          logoutButton.disabled = false;
+        }
       });
       byId("add-button").addEventListener("click", openCreateModal);
       byId("close-modal").addEventListener("click", closeModal);
