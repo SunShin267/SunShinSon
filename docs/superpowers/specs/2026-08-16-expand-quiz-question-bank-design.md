@@ -54,9 +54,9 @@ Bổ sung câu hỏi trực tiếp vào mảng dữ liệu hiện có trong `pub
 
 Không thay đổi HTML/CSS của giao diện, các hàm điều khiển trò chơi, điều hướng về trang chủ hay cơ chế đăng xuất.
 
-## Kiểm tra dữ liệu
+## Rà soát trước khi phát hành
 
-Sau khi bổ sung, thực hiện kiểm tra tự động ở mức dữ liệu để xác nhận:
+Không bổ sung test theo yêu cầu. Trước khi phát hành, chỉ rà soát dữ liệu và chạy build để xác nhận:
 
 - Có đúng 180 câu.
 - Mỗi chủ đề có đúng 36 câu.
@@ -64,8 +64,7 @@ Sau khi bổ sung, thực hiện kiểm tra tự động ở mức dữ liệu �
 - Mỗi câu có bốn đáp án và `correct` nằm trong khoảng hợp lệ.
 - Không có nội dung câu hỏi trùng nhau.
 - Các trường bắt buộc đều có giá trị.
-
-Không bổ sung bài kiểm thử giao diện vì tính năng và giao diện không thay đổi.
+- Bản build tĩnh cho GitHub Pages hoàn tất thành công.
 
 ## Tiêu chí hoàn thành
 
