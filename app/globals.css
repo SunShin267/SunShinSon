@@ -57,8 +57,18 @@ button { color: inherit; }
     radial-gradient(circle at 87% 18%, rgba(255,255,255,.8) 0 4px, transparent 5px),
     linear-gradient(180deg, #fff7d7 0%, #f9f8e9 58%, #e9f4df 100%);
 }
+.login-layout {
+  width: min(100%, 1460px); position: relative; z-index: 2; display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(420px, 510px); align-items: center; gap: 28px;
+}
+.login-visual {
+  margin: 0; overflow: hidden; border: 5px solid rgba(255,255,255,.9); border-radius: 38px;
+  background: #fff7d7; box-shadow: 0 30px 80px rgba(70,83,46,.14), 0 3px 0 #fff;
+  animation: rise .6s .08s ease-out both;
+}
+.login-visual img { display: block; width: 100%; height: auto; }
 .login-card {
-  width: min(100%, 510px); position: relative; z-index: 2; text-align: center;
+  width: 100%; position: relative; z-index: 2; text-align: center;
   background: rgba(255,255,255,.88); border: 1px solid rgba(255,255,255,.9); border-radius: 38px;
   padding: 46px 54px 36px; box-shadow: 0 30px 80px rgba(70, 83, 46, .13), 0 3px 0 #fff;
   backdrop-filter: blur(16px); animation: rise .6s ease-out both;
@@ -131,6 +141,16 @@ button { color: inherit; }
 .weather-badge div { display: flex; flex-direction: column; gap: 2px; }
 .weather-badge strong { font-size: 14px; }
 .weather-badge small { color: #8a7a3f; }
+.welcome-hero {
+  min-height: 410px; position: relative; overflow: hidden; border: 1px solid #f0dfaa; border-radius: 36px;
+  background: #fff4d7; box-shadow: 0 18px 45px rgba(78,85,48,.11);
+}
+.welcome-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.welcome-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,249,232,.32) 0%, transparent 47%); pointer-events: none; }
+.welcome-hero-copy { position: relative; z-index: 1; width: min(44%, 470px); padding: 46px 46px 46px 34px; }
+.welcome-hero-copy > p:last-of-type { max-width: 360px; }
+.welcome-followup { display: block; }
+.welcome-hero .weather-badge { width: fit-content; min-width: 220px; margin-top: 24px; background: rgba(255,255,255,.82); backdrop-filter: blur(10px); }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 19px; }
 .section-heading h2 { margin: 0; font-size: 24px; letter-spacing: -.6px; }
 .section-heading > span { color: #8a958e; font-size: 13px; }
@@ -189,6 +209,12 @@ footer span { color: #f08770; }
 @keyframes rise { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 820px) {
+  .login-layout { grid-template-columns: 1fr; width: min(100%, 680px); gap: 18px; }
+  .login-visual { border-radius: 30px; }
+  .welcome-hero { min-height: 370px; }
+  .welcome-hero-copy { width: 43%; padding: 30px 24px 30px 20px; }
+  .welcome-hero-copy h1 { font-size: clamp(36px, 6vw, 48px); letter-spacing: -2px; }
+  .welcome-hero-copy > p:last-of-type { max-width: 225px; }
   .topic-grid { grid-template-columns: 1fr; }
   .topic-card--featured { grid-row: auto; min-height: 240px; }
   .topic-card--featured .topic-icon { width: 76px; height: 76px; font-size: 40px; border-radius: 23px; }
@@ -199,6 +225,8 @@ footer span { color: #f08770; }
 
 @media (max-width: 620px) {
   .login-page { padding: 22px 14px 82px; }
+  .login-layout { gap: 14px; }
+  .login-visual { border-width: 3px; border-radius: 24px; }
   .login-card { padding: 37px 24px 30px; border-radius: 30px; }
   .login-card .brand { margin-bottom: 30px; }
   .cloud--one { left: -10%; }
@@ -210,6 +238,12 @@ footer span { color: #f08770; }
   .home-content, .topic-content { width: min(calc(100% - 28px), 1180px); }
   .home-content { padding: 38px 0 55px; }
   .welcome-block { align-items: flex-start; flex-direction: column; margin-bottom: 36px; }
+  .welcome-hero { min-height: 560px; border-radius: 28px; justify-content: flex-start; }
+  .welcome-hero > img { object-position: 67% center; }
+  .welcome-hero::after { background: linear-gradient(180deg, rgba(255,249,232,.98) 0 35%, rgba(255,249,232,.25) 58%, transparent 78%); }
+  .welcome-hero-copy { width: 100%; padding: 28px 24px; }
+  .welcome-hero-copy h1 { font-size: clamp(34px, 11vw, 46px); }
+  .welcome-hero .weather-badge { min-width: 0; margin-top: 18px; }
   .weather-badge { width: 100%; min-width: 0; }
   .section-heading > span { display: none; }
   .topic-card { min-height: 180px; padding: 22px 57px 22px 20px; gap: 15px; }

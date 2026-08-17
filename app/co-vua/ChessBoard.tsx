@@ -1,13 +1,15 @@
 "use client";
 
 import type { Color, Square } from "chess.js";
+import type { CSSProperties } from "react";
 import { hydrateChess, type ChessGame } from "./chess-game";
+import { CHESS_BOARD_THEMES, CHESS_PIECE_THEMES, type ChessBoardThemeId, type ChessPieceThemeId } from "./chess-themes";
 
 const glyphs: Record<string, string> = { wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙", bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟" };
 const names: Record<string, string> = { k: "Vua", q: "Hậu", r: "Xe", b: "Tượng", n: "Mã", p: "Tốt" };
 const allFiles = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
 
-export function ChessBoard({ game, orientation, selected, legalTargets, lastMove, checkedKing, disabled = false, onSquare, label = "Bàn cờ đang chơi" }: {
+export function ChessBoard({ game, orientation, selected, legalTargets, lastMove, checkedKing, disabled = false, onSquare, label = "Bàn cờ đang chơi", boardTheme = "purple", pieceTheme = "ink" }: {
   game: ChessGame;
   orientation: Color;
   selected?: Square | null;
@@ -17,13 +19,22 @@ export function ChessBoard({ game, orientation, selected, legalTargets, lastMove
   disabled?: boolean;
   onSquare?: (square: Square) => void;
   label?: string;
+  boardTheme?: ChessBoardThemeId;
+  pieceTheme?: ChessPieceThemeId;
 }) {
   const chess = hydrateChess(game);
   const files = orientation === "w" ? [...allFiles] : [...allFiles].reverse();
   const ranks = orientation === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const targets = new Set(legalTargets ?? []);
+  const boardColors = CHESS_BOARD_THEMES[boardTheme];
+  const pieceColors = CHESS_PIECE_THEMES[pieceTheme];
+  const boardStyle = {
+    "--chess-light": boardColors.light,
+    "--chess-dark": boardColors.dark,
+    "--chess-border": boardColors.border,
+  } as CSSProperties;
 
-  return <div className="chess-board" role="grid" aria-label={label} aria-disabled={disabled}>
+  return <div className="chess-board" style={boardStyle} role="grid" aria-label={label} aria-disabled={disabled}>
     {ranks.flatMap((rank, rankIndex) => files.map((file, fileIndex) => {
       const square = `${file}${rank}` as Square;
       const piece = chess.get(square);
@@ -43,7 +54,7 @@ export function ChessBoard({ game, orientation, selected, legalTargets, lastMove
       >
         {fileIndex === 0 ? <small className="rank-label" aria-hidden="true">{rank}</small> : null}
         {rankIndex === 7 ? <small className="file-label" aria-hidden="true">{file}</small> : null}
-        <span aria-hidden="true">{piece ? glyphs[`${piece.color}${piece.type}`] : ""}</span>
+        <span style={piece ? { color: piece.color === "w" ? pieceColors.white : pieceColors.black } : undefined} aria-hidden="true">{piece ? glyphs[`${piece.color}${piece.type}`] : ""}</span>
         {isLegal ? <i aria-hidden="true" /> : null}
       </button>;
     }))}

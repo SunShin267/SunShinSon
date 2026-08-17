@@ -12,6 +12,8 @@ import { ChessHistory } from "./ChessHistory";
 import { loadChessHistory, recordChessGame, uciMove, type ChessGameRecord } from "./chess-history";
 import { ChessLearn } from "./ChessLearn";
 import { ChessSetup, type ChessConfig } from "./ChessSetup";
+import { ChessToolbar } from "./ChessToolbar";
+import type { ChessBoardThemeId, ChessPieceThemeId } from "./chess-themes";
 import { StockfishClient } from "./stockfish-client";
 
 type Tab = "pieces" | "rules" | "play";
@@ -39,6 +41,8 @@ export function ChessGame() {
   const [game, setGame] = useState<ChessGameState | null>(null);
   const [history, setHistory] = useState<ChessGameRecord[]>([]);
   const [orientation, setOrientation] = useState<Color>("w");
+  const [boardTheme, setBoardTheme] = useState<ChessBoardThemeId>("purple");
+  const [pieceTheme, setPieceTheme] = useState<ChessPieceThemeId>("ink");
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionRequest | null>(null);
   const [clock, setClock] = useState<ClockState | null>(null);
@@ -356,20 +360,32 @@ export function ChessGame() {
     <main className="chess-page">
       <header className="chess-hero"><div><p className="kicker">Học chiến thuật từng nước</p><h1>Cờ vua</h1><p>Gặp gỡ sáu quân cờ, hiểu luật và thử tài trên bàn cờ thật.</p></div><span aria-hidden="true">♞</span></header>
       <nav className="chess-main-tabs" aria-label="Khu vực cờ vua">{(["pieces", "rules", "play"] as const).map((item) => <button key={item} type="button" aria-current={tab === item ? "page" : undefined} onClick={() => setTab(item)}><span aria-hidden="true">{item === "pieces" ? "♟" : item === "rules" ? "📖" : "♜"}</span>{item === "pieces" ? "Học quân" : item === "rules" ? "Học luật" : "Chơi cờ"}</button>)}</nav>
+      {tab === "play" ? <ChessToolbar
+        boardTheme={boardTheme}
+        pieceTheme={pieceTheme}
+        onBoardTheme={setBoardTheme}
+        onPieceTheme={setPieceTheme}
+        gameActions={screen === "game" && game && config ? {
+          onFlip: () => setOrientation((value) => value === "w" ? "b" : "w"),
+          onHistory: () => setScreen("history"),
+          onRestart: () => confirmAnd(() => start(config)),
+          onNewSetup: () => confirmAnd(() => { setGame(null); setConfig(null); setScreen("setup"); }),
+        } : undefined}
+      /> : null}
       {tab === "pieces" ? <ChessLearn section="pieces" /> : null}
       {tab === "rules" ? <ChessLearn section="rules" /> : null}
       {tab === "play" && screen === "setup" ? <ChessSetup key={childName || "loading"} childName={childName} historyCount={history.length} onStart={start} onHistory={() => setScreen("history")} /> : null}
-      {tab === "play" && screen === "history" ? <ChessHistory records={history} onChange={setHistory} onBack={() => setScreen(game ? "game" : "setup")} /> : null}
+      {tab === "play" && screen === "history" ? <ChessHistory records={history} boardTheme={boardTheme} pieceTheme={pieceTheme} onChange={setHistory} onBack={() => setScreen(game ? "game" : "setup")} /> : null}
       {tab === "play" && screen === "game" && game && config && status ? <section className="chess-game-layout">
         <aside className="chess-game-sidebar">
           <div className={`chess-turn-card ${status.check ? "is-check" : ""}`}><p>{finalState ? "Ván cờ kết thúc" : thinking ? "Máy đang suy nghĩ…" : status.check ? "Chiếu Vua!" : "Đến lượt"}</p><strong>{finalState ? resultText : activeName}</strong><span>{finalState ? reasonLabels[finalState.reason] : `${status.turn === "w" ? "Trắng" : "Đen"} · ${game.san.length} nước`}</span></div>
           {clock ? <div className="chess-clocks" aria-label="Đồng hồ"><div className={clock.active === "b" ? "is-active" : ""}><span>⚫ {config.players.black}</span><strong>{formatClock(clock.blackMs)}</strong></div><div className={clock.active === "w" ? "is-active" : ""}><span>⚪ {config.players.white}</span><strong>{formatClock(clock.whiteMs)}</strong></div></div> : null}
           <div className="chess-player-cards"><article className={status.turn === "w" && !finalState ? "is-active" : ""}><span aria-hidden="true">♔</span><div><strong>{config.players.white}</strong><small>Quân Trắng</small></div></article><article className={status.turn === "b" && !finalState ? "is-active" : ""}><span aria-hidden="true">♚</span><div><strong>{config.players.black}</strong><small>Quân Đen</small></div></article></div>
-          <div className="chess-game-actions"><button type="button" onClick={() => setOrientation((value) => value === "w" ? "b" : "w")}>⇅ Lật bàn</button><button type="button" onClick={() => setScreen("history")}>☷ Lịch sử</button><button type="button" onClick={() => confirmAnd(() => start(config))}>↻ Chơi lại</button>{!finalState ? <button type="button" className="danger" onClick={() => finishGame(game, status.turn === "w" ? "black" : "white", "resignation")}>⚑ Đầu hàng</button> : null}<button type="button" className="secondary" onClick={() => confirmAnd(() => { setGame(null); setConfig(null); setScreen("setup"); })}>Thiết lập mới</button></div>
+          {!finalState ? <div className="chess-game-actions"><button type="button" className="danger" onClick={() => finishGame(game, status.turn === "w" ? "black" : "white", "resignation")}>⚑ Đầu hàng</button></div> : null}
         </aside>
         <div className="chess-board-column">
           {engineError ? <div className="chess-engine-error" role="alert"><div><strong>Máy chơi cờ chưa sẵn sàng</strong><p>{engineError}</p></div><button type="button" onClick={retryEngine}>Thử lại</button><button type="button" onClick={switchToLocal}>Chuyển sang hai người</button></div> : null}
-          <ChessBoard game={game} orientation={orientation} selected={selected} legalTargets={legalTargets} lastMove={recentMove} checkedKing={checkedKingSquare(game)} disabled={Boolean(finalState) || thinking || Boolean(engineError) || (config.mode === "computer" && status.turn !== config.humanColor)} onSquare={chooseSquare} />
+          <ChessBoard game={game} orientation={orientation} boardTheme={boardTheme} pieceTheme={pieceTheme} selected={selected} legalTargets={legalTargets} lastMove={recentMove} checkedKing={checkedKingSquare(game)} disabled={Boolean(finalState) || thinking || Boolean(engineError) || (config.mode === "computer" && status.turn !== config.humanColor)} onSquare={chooseSquare} />
           <p className="chess-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
           {storageNotice ? <p className="chess-storage-notice" role="status">{storageNotice}</p> : null}
         </div>

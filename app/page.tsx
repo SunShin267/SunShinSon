@@ -107,15 +107,23 @@ function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
       <div className="login-decoration login-decoration--left" aria-hidden="true">✿</div>
       <div className="login-decoration login-decoration--right" aria-hidden="true">✦</div>
 
-      <section className="login-card">
-        <SunLogo />
-        <div className="login-copy">
-          <p className="kicker">Chào mừng bé đến với khu vườn tri thức</p>
-          <h1>Mỗi ngày một điều<br /><span>hay ho mới!</span></h1>
-          <p className="intro">Bé hãy cho Sun biết tên để cùng bắt đầu hành trình nhé.</p>
-        </div>
+      <div className="login-layout">
+        <figure className="login-visual">
+          <img
+            src="/images/sunshinson-login-hero.png"
+            alt="SunShinSon cùng trò tìm số, cờ Caro và cờ vua"
+          />
+        </figure>
 
-        <form className="login-form" onSubmit={submit}>
+        <section className="login-card">
+          <SunLogo />
+          <div className="login-copy">
+            <p className="kicker">Chào mừng bé đến với khu vườn tri thức</p>
+            <h1>Mỗi ngày một điều<br /><span>hay ho mới!</span></h1>
+            <p className="intro">Bé hãy cho Sun biết tên để cùng bắt đầu hành trình nhé.</p>
+          </div>
+
+          <form className="login-form" onSubmit={submit}>
           <label htmlFor="child-name">Tên của bé</label>
           <div className="input-wrap">
             <span aria-hidden="true">☺</span>
@@ -132,10 +140,11 @@ function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
           <button type="submit" disabled={!name.trim()}>
             Bắt đầu khám phá <span aria-hidden="true">→</span>
           </button>
-        </form>
+          </form>
 
-        <div className="login-note"><span>♥</span> Không cần mật khẩu đâu bé nhé!</div>
-      </section>
+          <div className="login-note"><span>♥</span> Không cần mật khẩu đâu bé nhé!</div>
+        </section>
+      </div>
 
       <div className="ground" aria-hidden="true">
         <span>🌼</span><span>🌱</span><span>🌷</span><span>🌿</span><span>🌼</span>
@@ -149,15 +158,19 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
     <div className="app-shell">
       <AppHeader name={name} onHome={() => undefined} onLogout={onLogout} />
       <main className="home-content">
-        <section className="welcome-block">
-          <div>
+        <section className="welcome-block welcome-hero">
+          <img src="/images/sunshinson-home-hero.png" alt="" aria-hidden="true" />
+          <div className="welcome-hero-copy">
             <p className="kicker">Hôm nay mình chơi gì nhỉ?</p>
             <h1>Xin chào, <span>{name}!</span> 👋</h1>
-            <p>Chọn một hoạt động bé thích và cùng Sun khám phá nhé.</p>
-          </div>
-          <div className="weather-badge" aria-label="Một ngày thật vui">
-            <span>☀️</span>
-            <div><strong>Ngày thật vui</strong><small>Sẵn sàng khám phá!</small></div>
+            <p>
+              Chọn một hoạt động bé thích{" "}
+              <span className="welcome-followup">và cùng SunShinSon khám phá nhé.</span>
+            </p>
+            <div className="weather-badge" aria-label="Một ngày thật vui">
+              <span>☀️</span>
+              <div><strong>Ngày thật vui</strong><small>Sẵn sàng khám phá!</small></div>
+            </div>
           </div>
         </section>
 
