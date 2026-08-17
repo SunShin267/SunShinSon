@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sunshinson",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sunshinson-db",
+      "database_id": "4bdcb839-b664-4e0f-a755-ebc2e0162cc1",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "observability": { "enabled": true }
+}

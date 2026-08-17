@@ -399,6 +399,21 @@
   .toggle-knob{ width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
   .toggle-switch.on .toggle-knob{ left:23px; }
   .pool-info{ font-weight:700; font-size:13px; color:#6b6796; text-align:center; margin:2px 0 16px; }
+  .data-source-status{
+    margin:0 0 14px;
+    color:#6b6796;
+    font-size:12.5px;
+    font-weight:800;
+    text-align:center;
+  }
+  .data-source-status.fallback{ color:#a85c28; }
+  .loading-message{
+    padding:28px 10px 18px;
+    font-family:'Baloo 2',sans-serif;
+    font-size:20px;
+    font-weight:800;
+    text-align:center;
+  }
   .start-btn{
     width:100%;
     font-family:'Baloo 2',sans-serif;
@@ -486,7 +501,7 @@ document.getElementById('logoutButton').addEventListener('click', () => {
    topic: dongvat | tunhien | toanhoc | domeo | vanhoa
    age:   de (3-5 tuổi) | vua (6-8 tuổi) | kho (9-12 tuổi)
 ========================================================= */
-const questions = [
+const fallbackQuestions = [
   { tag:"đố vui", topic:"dongvat", age:"de", q:"Con gì kêu “meo meo” và thích bắt chuột?", opts:["Con chó","Con mèo","Con gà","Con vịt"], correct:1,
     explain:"Đúng rồi, đó là con mèo! Mèo kêu “meo meo” và rất giỏi bắt chuột đó." },
   { tag:"đố vui", topic:"tunhien", age:"vua", q:"Mặt Trời mọc ở hướng nào?", opts:["Hướng Đông","Hướng Tây","Hướng Nam","Hướng Bắc"], correct:0,
@@ -588,7 +603,7 @@ const questions = [
 ];
 
 /* ---- Mở rộng ngân hàng: đủ 36 câu cho mỗi chủ đề, 12 câu mỗi độ tuổi ---- */
-questions.push(...[
+fallbackQuestions.push(...[
   { tag:"đố vui", topic:"dongvat", age:"de", q:"Con vật nào sống dưới nước và bơi bằng vây?", opts:["Con cá","Con mèo","Con gà","Con thỏ"], correct:0, explain:"Đúng rồi, cá sống dưới nước và dùng vây để bơi." },
   { tag:"đố vui", topic:"dongvat", age:"de", q:"Con voi dùng bộ phận nào để hút nước?", opts:["Cái tai","Cái vòi","Cái đuôi","Bàn chân"], correct:1, explain:"Chính xác, voi dùng chiếc vòi dài để hút nước và đưa thức ăn vào miệng." },
   { tag:"đố vui", topic:"dongvat", age:"de", q:"Con gì thường kêu “cạp cạp” và có thể bơi trên ao?", opts:["Con vịt","Con bò","Con dê","Con ngựa"], correct:0, explain:"Đúng rồi, vịt kêu “cạp cạp” và bơi rất giỏi nhờ đôi chân có màng." },
@@ -723,6 +738,9 @@ questions.push(...[
   { tag:"đố vui", topic:"vanhoa", age:"kho", q:"Tên Thăng Long mang ý nghĩa hình tượng nào?", opts:["Rồng bay lên","Biển lặng sóng","Núi cao xanh","Mặt Trời mọc"], correct:0, explain:"Đúng rồi, Thăng Long có nghĩa là rồng bay lên, thể hiện khát vọng phát triển của kinh đô." }
 ]);
 
+let questions = fallbackQuestions.slice();
+let questionSource = 'loading';
+
 const TOPICS = [
   { id:'all', label:'✨ Tất cả' },
   { id:'dongvat', label:'🐾 Động vật' },
@@ -737,6 +755,31 @@ const AGES = [
   { id:'vua', label:'🌟 6–8 tuổi' },
   { id:'kho', label:'🚀 9–12 tuổi' }
 ];
+const VALID_TOPICS = new Set(['dongvat', 'tunhien', 'toanhoc', 'domeo', 'vanhoa']);
+const VALID_AGES = new Set(['de', 'vua', 'kho']);
+const VALID_TAGS = new Set(['đố vui', 'đố mẹo']);
+
+function isNonEmptyString(value){
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isValidQuestion(value){
+  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+    VALID_TOPICS.has(value.topic) &&
+    VALID_AGES.has(value.age) &&
+    VALID_TAGS.has(value.tag) &&
+    isNonEmptyString(value.q) &&
+    isNonEmptyString(value.explain) &&
+    Array.isArray(value.opts) &&
+    value.opts.length === 4 &&
+    value.opts.every(isNonEmptyString) &&
+    Number.isInteger(value.correct) &&
+    value.correct >= 0 && value.correct <= 3;
+}
+
+function isValidQuestionList(value){
+  return Array.isArray(value) && value.length > 0 && value.every(isValidQuestion);
+}
 
 /* ================= TRẠNG THÁI ỨNG DỤNG ================= */
 let activeQuestions = [];   // bộ câu hỏi đang chơi (sau khi lọc/xáo trộn)
@@ -761,6 +804,44 @@ const bubbleEl = document.getElementById('bubble');
 const subtitleEl = document.getElementById('subtitle');
 const foxEl = document.getElementById('fox');
 const mouthEl = document.getElementById('foxMouth');
+
+function renderLoadingSetup(){
+  viewState = 'setup';
+  progressEl.innerHTML = '';
+  progressEl.style.display = 'none';
+  scoreboardEl.style.display = 'none';
+  subtitleEl.textContent = 'Đang chuẩn bị ngân hàng câu hỏi cho bé…';
+  setFoxMouth('normal');
+  bubbleEl.textContent = 'Cáo Tí đang lấy câu hỏi mới nhất!';
+  cardEl.innerHTML = `
+    <div class="loading-message" role="status" aria-live="polite">Đang tải ngân hàng câu hỏi…</div>
+    <button class="start-btn" type="button" disabled>Bắt đầu chơi 🚀</button>
+  `;
+}
+
+async function loadQuestions(){
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch('./api/questions', {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' }
+    });
+    if(!response.ok) throw new Error(`Không tải được câu hỏi (${response.status})`);
+
+    const data = await response.json();
+    if(!isValidQuestionList(data)) throw new Error('Dữ liệu câu hỏi không hợp lệ');
+
+    questions = data;
+    questionSource = 'database';
+  } catch (error) {
+    questions = fallbackQuestions.slice();
+    questionSource = 'fallback';
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
 function setFoxMouth(state){
   if(state === 'happy') mouthEl.setAttribute('d','M50 88 Q60 100 70 88');
@@ -809,8 +890,13 @@ function renderSetup(){
   const countHtml = baseCounts.map(n =>
     `<button class="chip ${selectedCount === n ? 'selected' : ''}" data-kind="count" data-id="${n}">${n} câu</button>`
   ).join('') + `<button class="chip ${selectedCount === 'all' ? 'selected' : ''}" data-kind="count" data-id="all">Tất cả (${poolSize})</button>`;
+  const sourceLabel = questionSource === 'fallback'
+    ? 'Đang dùng dữ liệu dự phòng'
+    : 'Dữ liệu câu hỏi từ máy chủ';
+  const sourceClass = questionSource === 'fallback' ? ' fallback' : '';
 
   cardEl.innerHTML = `
+    <div class="data-source-status${sourceClass}" role="status">${sourceLabel}</div>
     <div class="setup-section">
       <span class="setup-label">📚 Chủ đề</span>
       <div class="chip-row">${topicHtml}</div>
@@ -1176,7 +1262,8 @@ function launchConfetti(){
   }
 }
 
-renderSetup();
+renderLoadingSetup();
+loadQuestions().finally(renderSetup);
 </script>
 </body>
 </html>

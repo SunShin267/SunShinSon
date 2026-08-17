@@ -240,8 +240,7 @@ git commit -m "Add idempotent seed for quiz questions"
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
-  ADMIN_PASSWORD_HASH: string;
-  ADMIN_PASSWORD_SALT: string;
+  ADMIN_PASSWORD: string;
   ADMIN_SESSION_SECRET: string;
   LOGIN_ATTEMPT_SALT: string;
   IMAGES?: {
@@ -305,15 +304,14 @@ git commit -m "Add quiz API models and validation"
 
 **Interfaces:**
 - Consumes: `Env`, `createDb`, `adminLoginAttempts`, request headers/cookies.
-- Produces: `handleAdminLogin`, `handleAdminLogout`, `requireAdmin`, `requireSameOrigin` và công cụ sinh bốn secret.
+- Produces: `handleAdminLogin`, `handleAdminLogout`, `requireAdmin`, `requireSameOrigin` và công cụ sinh hai secret.
 
 - [ ] **Step 1: Thêm encoding và crypto helpers**
 
 Dùng Web Crypto cho:
 
-- PBKDF2-SHA-256, 210.000 iterations, 256-bit output để so sánh mật khẩu với `ADMIN_PASSWORD_HASH` và `ADMIN_PASSWORD_SALT` dạng base64url.
+- `TextEncoder` mã hoá mật khẩu gửi lên và `ADMIN_PASSWORD`, sau đó so sánh byte bằng vòng lặp constant-time.
 - HMAC-SHA-256 với `ADMIN_SESSION_SECRET` để ký payload JSON có trường `exp` là Unix timestamp theo giây.
-- So sánh byte bằng vòng lặp constant-time thay vì so sánh string trực tiếp.
 - Session token được ghép bằng `base64url(payload) + "." + base64url(signature)`.
 
 - [ ] **Step 2: Thêm cookie helpers**
@@ -328,7 +326,7 @@ Logout đặt cùng cookie với `Max-Age=0`.
 
 - [ ] **Step 3: Thêm rate limit D1**
 
-`client_key` là SHA-256 của `CF-Connecting-IP + ":" + LOGIN_ATTEMPT_SALT`. Trước khi kiểm tra password:
+`client_key` là SHA-256 của `CF-Connecting-IP + ":" + LOGIN_ATTEMPT_SALT`. Với mỗi login request:
 
 - Xoá record có `window_started_at` cũ hơn 24 giờ.
 - Nếu `blocked_until > now`, trả HTTP 429.
@@ -344,15 +342,16 @@ Logout đặt cùng cookie với `Max-Age=0`.
 
 - [ ] **Step 5: Type-check và commit**
 
-Tạo `scripts/generate-admin-secrets.mjs` nhận mật khẩu từ biến môi trường `SUNSHINSON_ADMIN_PASSWORD`, tạo salt 16 byte, chạy PBKDF2-SHA-256 210.000 iterations và tạo hai random secret 32 byte. Script in bốn dòng theo đúng tên secret nhưng không in lại mật khẩu. Nếu biến môi trường rỗng, script phải thoát lỗi trước khi sinh dữ liệu.
+Tạo `scripts/generate-admin-secrets.mjs` để tạo hai random secret 32 byte cho `ADMIN_SESSION_SECRET` và `LOGIN_ATTEMPT_SALT`. Script phải nêu rõ rằng `ADMIN_PASSWORD` được đặt riêng bằng `wrangler secret put` nhưng không in giá trị mật khẩu.
 
-Người dùng chạy script trong terminal riêng bằng password prompt ẩn:
+Người dùng chạy script, sau đó đặt `ADMIN_PASSWORD` trong terminal riêng bằng password prompt ẩn:
 
 ```zsh
-read -s "SUNSHINSON_ADMIN_PASSWORD?Admin password: "
-export SUNSHINSON_ADMIN_PASSWORD
 node scripts/generate-admin-secrets.mjs
-unset SUNSHINSON_ADMIN_PASSWORD
+read -s "ADMIN_PASSWORD?Admin password: "
+echo
+printf %s "$ADMIN_PASSWORD" | npx wrangler secret put ADMIN_PASSWORD
+unset ADMIN_PASSWORD
 ```
 
 Run: `npx tsc --noEmit`
@@ -571,18 +570,19 @@ Run: `npm run deploy:cloudflare`
 
 Expected: Wrangler trả production URL của Worker tên `sunshinson` trên domain `workers.dev` và deployment success. Admin login chưa hoạt động cho tới khi Step 5 cấu hình secrets.
 
-- [ ] **Step 5: Configure four secrets**
+- [ ] **Step 5: Configure three secrets**
 
-Người dùng tự chạy `scripts/generate-admin-secrets.mjs` trong terminal riêng bằng password prompt ẩn ở Task 4, sau đó nhập bốn giá trị trực tiếp vào Cloudflare dashboard của Worker `sunshinson` hoặc lần lượt bằng `wrangler secret put`. Không gửi secret qua chat và không ghi chúng vào file trong repo.
+Người dùng tự chạy `scripts/generate-admin-secrets.mjs`, đặt `ADMIN_PASSWORD` riêng bằng `wrangler secret put`, rồi nhập hai giá trị do script sinh trực tiếp vào Cloudflare dashboard của Worker `sunshinson` hoặc lần lượt bằng `wrangler secret put`. Không gửi secret qua chat và không ghi chúng vào file trong repo.
 
 Secret names chính xác:
 
 ```text
-ADMIN_PASSWORD_HASH
-ADMIN_PASSWORD_SALT
+ADMIN_PASSWORD
 ADMIN_SESSION_SECRET
 LOGIN_ATTEMPT_SALT
 ```
+
+Chỉ xoá `ADMIN_PASSWORD_HASH` và `ADMIN_PASSWORD_SALT` sau khi xác minh đăng nhập thành công với `ADMIN_PASSWORD` mới.
 
 - [ ] **Step 6: Production smoke checks**
 
@@ -607,4 +607,4 @@ git push origin main
 
 - [ ] **Step 8: Bàn giao**
 
-Bàn giao Worker URL, admin URL, GitHub Pages backup URL và hướng dẫn đổi mật khẩu bằng cách cập nhật `ADMIN_PASSWORD_HASH`/`ADMIN_PASSWORD_SALT` trong Cloudflare Secrets.
+Bàn giao Worker URL, admin URL, GitHub Pages backup URL và hướng dẫn đổi mật khẩu bằng cách cập nhật `ADMIN_PASSWORD` trong Cloudflare Secrets.
