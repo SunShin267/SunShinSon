@@ -60,6 +60,26 @@ const topics: Topic[] = [
     preview: ["Từ 1 đến 10", "Từ 1 đến 20", "Tìm số bí mật"],
   },
   {
+    id: "tinh-nhanh",
+    title: "Tính nhanh như chớp",
+    eyebrow: "Luyện phản xạ",
+    description: "Thử tài cộng, trừ, nhân, chia thật nhanh trong 60 giây.",
+    icon: "⚡",
+    color: "#9b7bec",
+    accent: "#f1ecff",
+    preview: ["Ba mức độ", "Thử thách 60 giây", "Bảng xếp hạng"],
+  },
+  {
+    id: "sudoku",
+    title: "Sudoku vui nhộn",
+    eyebrow: "Rèn tư duy logic",
+    description: "Tìm hình và con số còn thiếu để hoàn thành bàn chơi.",
+    icon: "🧩",
+    color: "#ef8f55",
+    accent: "#ffeadb",
+    preview: ["Sudoku hình ảnh", "Ba mức độ", "Gợi ý thông minh"],
+  },
+  {
     id: "do-vui",
     title: "Đố vui cho bé",
     eyebrow: "Mỗi câu một nụ cười",
@@ -144,7 +164,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
         <section className="topics-section" aria-labelledby="topics-title">
           <div className="section-heading">
             <h2 id="topics-title">Góc vui học</h2>
-            <span>5 hoạt động dành cho bé</span>
+            <span>7 hoạt động dành cho bé</span>
           </div>
           <div className="topic-grid">
             {topics.map((topic, index) => (
@@ -153,8 +173,14 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
                 style={{ "--topic": topic.color, "--topic-soft": topic.accent } as React.CSSProperties}
                 key={topic.id}
                 onClick={() => {
-                  if (topic.id === "do-vui") {
-                    window.location.assign(process.env.NEXT_PUBLIC_QUIZ_PATH || "/do-vui-do-meo");
+                  const staticGamePaths: Record<string, string> = {
+                    "do-vui": process.env.NEXT_PUBLIC_QUIZ_PATH || "/do-vui-do-meo",
+                    "tinh-nhanh": process.env.NEXT_PUBLIC_QUICK_MATH_PATH || "/tinh-nhanh",
+                    sudoku: process.env.NEXT_PUBLIC_SUDOKU_PATH || "/sudoku",
+                  };
+                  const staticGamePath = staticGamePaths[topic.id];
+                  if (staticGamePath) {
+                    window.location.assign(staticGamePath);
                     return;
                   }
 

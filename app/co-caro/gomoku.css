@@ -25,17 +25,39 @@
 .gomoku-mode-picker label > span { grid-row: 1 / 3; align-self: center; font-size: 34px; }
 .gomoku-mode-picker strong { align-self: end; font-size: 16px; }
 .gomoku-mode-picker small { color: #7e8982; }
-.gomoku-player-fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 22px; }
-.gomoku-player-fields fieldset { padding: 18px; border: 1px solid #ece7dd; border-radius: 19px; background: #fffdf9; }
-.gomoku-player-fields fieldset > label, .gomoku-setup-options > label { display: grid; gap: 7px; color: #55645b; font-size: 12px; font-weight: 900; }
-.gomoku-player-fields fieldset > label + label { margin-top: 13px; }
+.gomoku-player-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+.gomoku-player-fields .gomoku-player-card { position: relative; padding: 21px; border: 1px solid color-mix(in srgb, var(--player-color) 22%, #e8e3d8); border-radius: 24px; background: linear-gradient(145deg, #fff 35%, color-mix(in srgb, var(--player-color) 7%, #fff)); box-shadow: 0 9px 24px color-mix(in srgb, var(--player-color) 8%, transparent); }
+.gomoku-player-card legend { width: auto; margin: 0 0 16px; padding: 0 8px 0 0; display: flex; align-items: center; gap: 9px; color: #394840; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.gomoku-player-preview { width: 38px; height: 38px; display: inline-grid; place-items: center; border: 1px solid color-mix(in srgb, var(--player-color) 25%, #e8e3d8); border-radius: 13px; background: #fff; font-size: 24px; box-shadow: 0 5px 12px color-mix(in srgb, var(--player-color) 13%, transparent); }
+.gomoku-player-fields fieldset > label { display: grid; gap: 7px; color: #55645b; font-size: 12px; font-weight: 900; }
 .gomoku-setup-form input, .gomoku-setup-form select { width: 100%; min-height: 46px; border: 2px solid #e4e0d6; border-radius: 13px; padding: 0 12px; background: #fff; color: var(--ink); font: inherit; outline: 0; }
 .gomoku-setup-form input:focus, .gomoku-setup-form select:focus { border-color: #dd715b; }
-.gomoku-computer-name { min-height: 46px; margin: 0 0 13px; padding: 0 12px; display: flex; align-items: center; border-radius: 13px; background: #eef5ff; font-weight: 900; }
+.gomoku-computer-name { min-height: 46px; margin: 0; padding: 0 14px; display: flex; align-items: center; border: 1px solid #dce8f3; border-radius: 14px; background: linear-gradient(135deg, #f5faff, #edf5ff); color: #496577; font-weight: 900; }
+.gomoku-choice-group { margin-top: 17px; }
+.gomoku-choice-group > span { display: block; margin-bottom: 9px; color: #65736b; font-size: 11px; font-weight: 900; letter-spacing: .7px; text-transform: uppercase; }
+.gomoku-swatch-picker, .gomoku-piece-picker { display: flex; flex-wrap: wrap; gap: 9px; }
+.gomoku-swatch-picker button { position: relative; width: 39px; height: 39px; min-height: 0; padding: 0; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50%; background: var(--swatch); color: #fff; cursor: pointer; box-shadow: 0 0 0 1px color-mix(in srgb, var(--swatch) 40%, #d9d4ca), 0 5px 10px color-mix(in srgb, var(--swatch) 20%, transparent); transition: transform .16s, box-shadow .16s, opacity .16s; }
+.gomoku-swatch-picker button:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); }
+.gomoku-swatch-picker button.is-selected { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--swatch), 0 7px 13px color-mix(in srgb, var(--swatch) 24%, transparent); }
+.gomoku-swatch-picker button span { opacity: 0; font-size: 17px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.gomoku-swatch-picker button.is-selected span { opacity: 1; }
+.gomoku-swatch-picker button:disabled { opacity: .22; cursor: not-allowed; filter: grayscale(.45); }
+.gomoku-piece-picker button { width: 45px; height: 45px; min-height: 0; padding: 0; border: 2px solid #e5e0d6; border-radius: 14px; background: rgba(255,255,255,.86); cursor: pointer; font-size: 24px; font-weight: 900; box-shadow: 0 4px 10px rgba(42,54,44,.05); transition: transform .16s, border-color .16s, background .16s, box-shadow .16s; }
+.gomoku-piece-picker button:hover { transform: translateY(-2px); border-color: currentColor; }
+.gomoku-piece-picker button.is-selected { border-color: currentColor; background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent), 0 7px 14px rgba(42,54,44,.08); transform: translateY(-2px); }
 .gomoku-form-error { margin: 10px 0 0; color: #bb4938; font-size: 13px; font-weight: 800; }
 .gomoku-storage-notice { margin: 14px 0 0; color: #a84739; text-align: center; font-size: 12px; font-weight: 800; }
-.gomoku-setup-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
-.gomoku-start { width: 100%; min-height: 54px; margin-top: 22px; font-size: 16px; }
+.gomoku-setup-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+.gomoku-setup-options > :only-child { grid-column: 1 / -1; }
+.gomoku-segment-card { padding: 16px !important; border: 1px solid #e9e4da !important; border-radius: 19px; background: #fffdf9; }
+.gomoku-segment-card legend { margin-bottom: 8px; padding: 0 7px; }
+.gomoku-segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.gomoku-segmented button { min-height: 48px; padding: 8px 10px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #e1ddd3; border-radius: 13px; background: #fff; color: #637168; cursor: pointer; font-weight: 900; transition: transform .16s, border-color .16s, background .16s, box-shadow .16s; }
+.gomoku-segmented button:hover { transform: translateY(-1px); border-color: #dfa18f; }
+.gomoku-segmented button.is-selected { border-color: #df765f; background: #fff3ef; color: #9f4334; box-shadow: 0 0 0 3px #ffebe5; }
+.gomoku-segmented button span { flex: 0 0 auto; font-size: 22px; line-height: 1; }
+.gomoku-difficulty-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gomoku-start { width: 100%; min-height: 58px; margin-top: 22px; border-radius: 17px; font-size: 17px; box-shadow: 0 7px 0 #a84332, 0 12px 24px rgba(185,75,57,.16); }
 .gomoku-game-layout { display: grid; grid-template-columns: 235px minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 20px; }
 .gomoku-sidebar, .gomoku-board-section { border: 1px solid #e7e3d9; border-radius: 24px; background: #fff; box-shadow: 0 10px 28px rgba(42,54,44,.05); }
 .gomoku-board-column { min-width: 0; }

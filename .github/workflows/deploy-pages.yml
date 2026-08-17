@@ -41,6 +41,8 @@ jobs:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
           SITE_URL: ${{ steps.pages.outputs.base_url }}
           NEXT_PUBLIC_QUIZ_PATH: ${{ steps.pages.outputs.base_path }}/do-vui-do-meo.html
+          NEXT_PUBLIC_QUICK_MATH_PATH: ${{ steps.pages.outputs.base_path }}/tinh-nhanh.html
+          NEXT_PUBLIC_SUDOKU_PATH: ${{ steps.pages.outputs.base_path }}/sudoku.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

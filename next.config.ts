@@ -14,6 +14,14 @@ const localConfig: NextConfig = {
           source: "/do-vui-do-meo",
           destination: "/do-vui-do-meo.html",
         },
+        {
+          source: "/tinh-nhanh",
+          destination: "/tinh-nhanh.html",
+        },
+        {
+          source: "/sudoku",
+          destination: "/sudoku.html",
+        },
       ],
       afterFiles: [],
       fallback: [],

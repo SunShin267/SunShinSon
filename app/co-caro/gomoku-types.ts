@@ -2,7 +2,6 @@ export type Stone = "p1" | "p2";
 export type BoardSize = 20 | 30 | 40 | 50;
 export type GameMode = "local" | "computer";
 export type Difficulty = "easy" | "medium" | "hard";
-export type PieceTheme = "classic" | "sky" | "garden";
 export type Coord = readonly [x: number, y: number];
 
 export type Move = {
@@ -26,7 +25,6 @@ export type PlayerConfig = {
 export type GomokuConfig = {
   mode: GameMode;
   difficulty?: Difficulty;
-  theme: PieceTheme;
   players: readonly [PlayerConfig, PlayerConfig];
   startingPlayer: Stone;
 };
@@ -44,11 +42,7 @@ export type GomokuState = {
 
 export const BOARD_SIZES: readonly BoardSize[] = [20, 30, 40, 50];
 
-export const PIECE_THEMES: Record<PieceTheme, readonly [string, string]> = {
-  classic: ["X", "O"],
-  sky: ["☀", "☾"],
-  garden: ["✿", "❧"],
-};
+export const PIECE_OPTIONS = ["X", "O", "☀", "☾", "✿", "❧"] as const;
 
 export const PLAYER_COLORS = ["#e45f4f", "#277b5a", "#4267b2", "#a14ea0"] as const;
 

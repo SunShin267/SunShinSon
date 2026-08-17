@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tính Nhanh Như Chớp ⚡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-top:#EAF6FF;
+    --bg-bot:#DDF3FF;
+    --card:#FFFFFF;
+    --ink:#2B2250;
+    --ink-soft:#6B6390;
+    --coral:#FF6B6B;
+    --coral-dark:#E8534F;
+    --yellow:#FFD93D;
+    --yellow-dark:#F2B705;
+    --green:#5FC98A;
+    --green-dark:#3FA86A;
+    --purple:#9B7BEC;
+    --purple-dark:#7E5CD6;
+    --blue:#4EA8DE;
+    --lavender:#F1ECFF;
+    --pink:#FFE3EC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Nunito',sans-serif;
+    background:
+      radial-gradient(circle at 10% 8%, #FFF7D6 0%, transparent 40%),
+      radial-gradient(circle at 92% 15%, #FFE0EC 0%, transparent 35%),
+      linear-gradient(180deg, var(--bg-top), var(--bg-bot));
+    color:var(--ink);
+    padding:20px 12px 60px;
+  }
+  .page-shell{ width:100%; max-width:480px; margin:0 auto; }
+  .app{ width:100%; }
+  .hidden{ display:none !important; }
+
+  .quiz-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .quiz-brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:var(--ink);
+    font-family:'Baloo 2',sans-serif;
+    font-size:18px;
+    font-weight:800;
+    text-decoration:none;
+  }
+  .brand-sun{
+    width:38px; height:38px; display:grid; place-items:center;
+    border:3px solid var(--ink); border-radius:50%; background:var(--yellow);
+    font-family:'Nunito',sans-serif; font-size:12px;
+    box-shadow:0 4px 0 rgba(43,34,80,.18);
+  }
+  .header-actions{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .mini-avatar{
+    width:35px; height:35px; display:grid; place-items:center; flex:0 0 auto;
+    border:2px solid #fff; border-radius:50%; background:#d9f5e6;
+    color:#23765c; font-weight:900; box-shadow:0 0 0 1px #b9dfcf;
+  }
+  .header-name{
+    max-width:130px; overflow:hidden; color:var(--ink); font-size:14px;
+    font-weight:800; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .logout-button{
+    width:36px; height:36px; flex:0 0 auto; border:2px solid #e5e1f1;
+    border-radius:12px; background:#fff; color:#77729b; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-size:17px; font-weight:900;
+    transition:background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .logout-button:hover{ background:#fff0ec; border-color:#ffd0c7; color:#d45f4b; }
+  .quiz-brand:focus-visible,
+  .logout-button:focus-visible{ outline:4px solid rgba(255,217,61,.55); outline-offset:3px; }
+  @media (max-width:420px){
+    .quiz-brand{ font-size:16px; }
+    .header-name{ max-width:72px; }
+  }
+
+  /* HERO / SHARED */
+  .hero{ text-align:center; margin-bottom:10px; }
+  .mascot{
+    font-size:52px;
+    display:inline-block;
+    animation:bob 2.4s ease-in-out infinite;
+    filter:drop-shadow(0 6px 6px rgba(43,34,80,.15));
+  }
+  @keyframes bob{
+    0%,100%{transform:translateY(0) rotate(-6deg);}
+    50%{transform:translateY(-8px) rotate(6deg);}
+  }
+  h1{
+    font-family:'Baloo 2',sans-serif;
+    font-size:clamp(26px,7vw,36px);
+    margin:2px 0 4px;
+    color:var(--purple-dark);
+    text-shadow:2px 2px 0 #fff, 4px 4px 0 rgba(155,123,236,.25);
+  }
+  .subtitle{
+    font-weight:700;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:340px;
+    margin:0 auto;
+  }
+  .hero-compact{ margin-bottom:14px; }
+  .hero-compact .mascot{ font-size:34px; }
+  .hero-compact h1{ font-size:clamp(20px,6vw,26px); margin:0; }
+
+  /* CARD */
+  .card{
+    background:var(--card);
+    border-radius:24px;
+    padding:20px;
+    box-shadow:0 10px 0 #d9d4ef, 0 14px 24px rgba(43,34,80,.12);
+  }
+
+  /* START SCREEN */
+  .tabs{ display:flex; gap:8px; justify-content:center; margin:18px 0 14px; }
+  .tab{
+    font-family:'Baloo 2',sans-serif;
+    font-size:15px; font-weight:700;
+    padding:9px 16px; border-radius:999px; border:none; cursor:pointer;
+    background:#fff; color:var(--ink-soft);
+    box-shadow:0 3px 0 #d9d4ef;
+  }
+  .tab:active{ transform:translateY(2px); box-shadow:0 1px 0 #d9d4ef; }
+  .tab.active{ background:var(--purple); color:#fff; box-shadow:0 3px 0 var(--purple-dark); }
+  .level-desc{
+    text-align:center; font-weight:700; color:var(--ink-soft);
+    font-size:13.5px; min-height:36px; padding:0 10px;
+  }
+  .info-row{ display:flex; justify-content:center; gap:8px; margin:14px 0; flex-wrap:wrap; }
+  .pill{
+    background:#fff; border-radius:14px; padding:8px 14px; font-weight:800;
+    font-size:14px; display:flex; align-items:center; gap:6px;
+    box-shadow:0 3px 0 #e5e0f7; color:var(--ink);
+  }
+  .big-btn{
+    display:block; width:100%;
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:20px;
+    padding:16px; border:none; border-radius:18px; cursor:pointer;
+    color:#fff; background:var(--green); box-shadow:0 5px 0 var(--green-dark);
+    margin-top:6px;
+  }
+  .big-btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--green-dark); }
+
+  /* PLAY SCREEN */
+  .topbar{ display:flex; justify-content:space-between; gap:8px; margin-bottom:12px; }
+  .stat-box{
+    background:#fff; border-radius:14px; padding:8px 12px; text-align:center; flex:1;
+    box-shadow:0 3px 0 #e5e0f7;
+  }
+  .stat-box .num{ font-family:'Baloo 2',sans-serif; font-size:20px; color:var(--purple-dark); font-weight:800; }
+  .stat-box .label{ font-size:11px; color:var(--ink-soft); font-weight:700; }
+
+  .track{
+    position:relative; height:14px; border-radius:999px; background:var(--lavender);
+    margin:6px 4px 26px;
+  }
+  .track-fill{
+    height:100%; border-radius:999px;
+    background:linear-gradient(90deg, var(--green), var(--yellow));
+    width:100%;
+  }
+  .track-rocket{
+    position:absolute; top:50%; left:100%;
+    transform:translate(-50%,-50%);
+    font-size:22px;
+  }
+
+  .question-card{
+    background:var(--lavender);
+    border-radius:20px;
+    padding:26px 16px;
+    text-align:center;
+    margin-bottom:14px;
+    position:relative;
+    min-height:104px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .question-card.correct{ background:#E3FBEC; animation:pop .3s ease; }
+  .question-card.wrong{ background:var(--pink); animation:shake .35s; }
+  .question-text{
+    font-family:'Baloo 2',sans-serif;
+    font-size:clamp(30px,9vw,40px);
+    font-weight:800;
+    color:var(--purple-dark);
+  }
+  .answer-display{
+    margin-top:8px;
+    font-family:'Baloo 2',sans-serif;
+    font-size:26px;
+    font-weight:700;
+    min-height:34px;
+    color:var(--ink);
+    letter-spacing:2px;
+  }
+  .answer-display .cursor{
+    display:inline-block; width:2px; height:24px; background:var(--purple);
+    margin-left:2px; vertical-align:middle; animation:blink 1s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .feedback-tag{
+    position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    font-size:12.5px; font-weight:800; color:var(--coral-dark);
+  }
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-5px);}
+    75%{transform:translateX(5px);}
+  }
+  @keyframes pop{
+    0%{transform:scale(1);} 50%{transform:scale(1.04);} 100%{transform:scale(1);}
+  }
+
+  .keypad{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px;
+  }
+  .key{
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:22px;
+    padding:16px 0; border:none; border-radius:14px; cursor:pointer;
+    background:#fff; color:var(--purple-dark);
+    box-shadow:0 3px 0 #d9d4ef;
+  }
+  .key:active{ transform:translateY(2px); box-shadow:0 1px 0 #d9d4ef; }
+  .key.del{ background:var(--coral); color:#fff; box-shadow:0 3px 0 var(--coral-dark); font-size:18px; }
+  .key.ok{ background:var(--green); color:#fff; box-shadow:0 3px 0 var(--green-dark); font-size:18px; }
+
+  /* RESULT SCREEN */
+  .result-hero{ text-align:center; }
+  .result-hero .big{ font-size:56px; }
+  .result-hero h2{
+    font-family:'Baloo 2',sans-serif; color:var(--purple-dark); margin:6px 0; font-size:26px;
+  }
+  .result-hero p{ color:var(--ink-soft); font-weight:700; margin:0 0 16px; }
+  .result-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;
+  }
+  .result-item{
+    background:var(--lavender); border-radius:16px; padding:14px 10px; text-align:center;
+  }
+  .result-item .num{ font-family:'Baloo 2',sans-serif; font-size:24px; color:var(--purple-dark); font-weight:800; }
+  .result-item .label{ font-size:12px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
+
+  footer{
+    text-align:center; margin-top:20px; font-size:12px; color:var(--ink-soft); font-weight:600;
+  }
+
+  /* LEADERBOARD */
+  .leaderboard{
+    margin-top:16px;
+  }
+  .leaderboard-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    margin-bottom:6px;
+  }
+  .leaderboard-title{
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; color:var(--purple-dark);
+  }
+  .leaderboard-note{
+    font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:10px;
+  }
+  .lb-row{
+    display:flex; align-items:center; gap:10px;
+    background:var(--lavender);
+    border-radius:12px;
+    padding:8px 12px;
+    margin-bottom:6px;
+  }
+  .lb-rank{
+    font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px;
+    width:26px; text-align:center; color:var(--purple-dark);
+  }
+  .lb-name{
+    flex:1; font-weight:800; font-size:14px; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lb-score{
+    font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:var(--green-dark);
+  }
+  .lb-empty, .lb-loading{
+    text-align:center; font-weight:700; font-size:13px; color:var(--ink-soft); padding:10px 0;
+  }
+
+  /* NAME SAVE DIALOG */
+  .dialog-overlay{
+    position:fixed; inset:0; background:rgba(43,34,80,.55);
+    display:flex; align-items:center; justify-content:center; z-index:60; padding:20px;
+  }
+  .dialog-card{
+    background:#fff; border-radius:26px; padding:28px 24px; text-align:center;
+    max-width:340px; width:100%;
+    box-shadow:0 12px 0 var(--yellow-dark);
+    animation:pop .35s ease;
+  }
+  .dialog-card .big{ font-size:46px; }
+  .dialog-card h2{
+    font-family:'Baloo 2',sans-serif; color:var(--purple-dark); margin:6px 0 4px; font-size:22px;
+  }
+  .dialog-card p{ color:var(--ink-soft); font-weight:700; font-size:13px; margin:0 0 14px; }
+  .name-input{
+    width:100%;
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    padding:12px 14px;
+    border-radius:14px;
+    border:2px solid var(--lavender);
+    outline:none;
+    margin-bottom:14px;
+    color:var(--ink);
+  }
+  .name-input:focus{ border-color:var(--purple); }
+  .dialog-actions{
+    display:flex; gap:8px;
+  }
+  .dialog-actions button{
+    flex:1;
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:14.5px;
+    padding:12px 10px; border:none; border-radius:14px; cursor:pointer; color:#fff;
+  }
+  #skipSaveBtn{ background:var(--ink-soft); box-shadow:0 4px 0 #524c73; }
+  #saveScoreBtn{ background:var(--green); box-shadow:0 4px 0 var(--green-dark); }
+  .dialog-actions button:active{ transform:translateY(2px); }
+</style>
+</head>
+<body>
+<div class="page-shell">
+<header class="quiz-header">
+  <a class="quiz-brand" href="./" aria-label="Về trang chủ SunShinSon">
+    <span class="brand-sun" aria-hidden="true">•ᴗ•</span>
+    <span>SunShinSon</span>
+  </a>
+  <div class="header-actions">
+    <div class="mini-avatar" id="headerAvatar" aria-hidden="true">B</div>
+    <span class="header-name" id="headerName">Bé</span>
+    <button class="logout-button" id="logoutButton" type="button" aria-label="Đăng xuất" title="Đăng xuất">↗</button>
+  </div>
+</header>
+<div class="app">
+
+  <!-- START SCREEN -->
+  <div id="startScreen">
+    <div class="hero">
+      <span class="mascot">🚀</span>
+      <h1>Tính Nhanh Như Chớp</h1>
+      <p class="subtitle">Trả lời thật nhiều phép tính trong 60 giây. Bé sẵn sàng chưa nào?</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab" data-level="easy">🐣 Dễ</button>
+      <button class="tab" data-level="medium">🌟 Vừa</button>
+      <button class="tab" data-level="hard">🔥 Khó</button>
+    </div>
+    <div class="level-desc" id="levelDesc"></div>
+
+    <div class="card">
+      <div class="info-row">
+        <div class="pill">⏱️ 60 giây</div>
+        <div class="pill">🔢 Gõ đáp án</div>
+      </div>
+      <button class="big-btn" id="startBtn">Bắt đầu ⚡</button>
+
+      <div class="leaderboard">
+        <div class="leaderboard-head">
+          <div class="leaderboard-title">🏆 Top 5 điểm cao</div>
+        </div>
+        <div class="leaderboard-note">Điểm được lưu và hiển thị công khai cho mọi bé chơi trang này nhé.</div>
+        <div id="leaderboardList">
+          <div class="lb-loading">Đang tải...</div>
+        </div>
+      </div>
+    </div>
+    <footer>Chúc bé tính thật nhanh! 🌈</footer>
+  </div>
+
+  <!-- PLAY SCREEN -->
+  <div id="playScreen" class="hidden">
+    <div class="hero hero-compact">
+      <span class="mascot">🚀</span>
+      <h1>Tính Nhanh Như Chớp</h1>
+    </div>
+    <div class="topbar">
+      <div class="stat-box"><div class="num" id="scoreNum">0</div><div class="label">ĐIỂM</div></div>
+      <div class="stat-box"><div class="num" id="streakNum">0</div><div class="label">CHUỖI ĐÚNG</div></div>
+      <div class="stat-box"><div class="num" id="timeNum">60</div><div class="label">GIÂY</div></div>
+    </div>
+    <div class="track">
+      <div class="track-fill" id="trackFill"></div>
+      <div class="track-rocket" id="trackRocket">🚀</div>
+    </div>
+
+    <div class="question-card" id="questionCard">
+      <div class="question-text" id="questionText">? + ?</div>
+      <div class="answer-display" id="answerDisplay"><span class="cursor"></span></div>
+      <div class="feedback-tag hidden" id="feedbackTag"></div>
+    </div>
+
+    <div class="keypad" id="keypad"></div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="resultScreen" class="hidden">
+    <div class="card">
+      <div class="result-hero">
+        <div class="big" id="resultEmoji">🏆</div>
+        <h2 id="resultTitle">Hoàn thành!</h2>
+        <p id="resultMsg">Bé đã làm rất tốt!</p>
+      </div>
+      <div class="result-grid">
+        <div class="result-item"><div class="num" id="resScore">0</div><div class="label">Câu đúng</div></div>
+        <div class="result-item"><div class="num" id="resAttempted">0</div><div class="label">Tổng số câu</div></div>
+        <div class="result-item"><div class="num" id="resAccuracy">0%</div><div class="label">Độ chính xác</div></div>
+        <div class="result-item"><div class="num" id="resBestStreak">0</div><div class="label">Chuỗi đúng tốt nhất</div></div>
+        <div class="result-item" style="grid-column:1/-1;"><div class="num" id="resAvgTime">0s</div><div class="label">Thời gian TB / câu đúng</div></div>
+      </div>
+      <button class="big-btn" id="playAgainBtn">Chơi lại 🚀</button>
+    </div>
+  </div>
+
+  <!-- SAVE SCORE DIALOG -->
+  <div id="nameDialog" class="dialog-overlay hidden">
+    <div class="dialog-card">
+      <div class="big">🏅</div>
+      <h2>Lưu điểm của bé!</h2>
+      <p>Nhập tên để lưu vào bảng xếp hạng (mọi người chơi đều thấy được).</p>
+      <input id="nameInput" class="name-input" maxlength="14" placeholder="Tên của bé...">
+      <div class="dialog-actions">
+        <button id="skipSaveBtn">Bỏ qua</button>
+        <button id="saveScoreBtn">Lưu điểm 🎉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSOLATION DIALOG -->
+  <div id="consolationDialog" class="dialog-overlay hidden">
+    <div class="dialog-card">
+      <div class="big">🤗</div>
+      <h2>Không sao đâu bé ơi!</h2>
+      <p>Lần này bé chưa trả lời đúng câu nào, nhưng đừng buồn nhé. Cứ luyện tập thêm, lần sau bé sẽ làm tốt hơn nhiều đó!</p>
+      <div class="dialog-actions">
+        <button id="closeConsolationBtn" style="flex:none; width:100%; background:var(--purple); box-shadow:0 4px 0 var(--purple-dark);">Con sẽ cố gắng lần sau! 💪</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const gameUserName = (window.localStorage.getItem('sunshinson-name') || '').trim() || 'Bé';
+  document.getElementById('headerName').textContent = gameUserName;
+  document.getElementById('headerAvatar').textContent = gameUserName.charAt(0).toUpperCase();
+  document.getElementById('logoutButton').addEventListener('click', () => {
+    window.localStorage.removeItem('sunshinson-name');
+    window.location.assign('./');
+  });
+
+  const LEVEL_INFO = {
+    easy:   { label:"Dễ", desc:"Cộng, trừ trong phạm vi 10 — hợp cho bé mới bắt đầu.",
+              ops:[{op:'+',aMax:10,bMax:10},{op:'-',aMax:10,bMax:10}] },
+    medium: { label:"Vừa", desc:"Cộng, trừ trong phạm vi 50 và bảng nhân nhỏ (x2 → x5).",
+              ops:[{op:'+',aMax:50,bMax:50},{op:'-',aMax:50,bMax:50},{op:'x',aMax:10,bMax:5}] },
+    hard:   { label:"Khó", desc:"Cộng, trừ trong phạm vi 100, nhân chia cả bảng cửu chương.",
+              ops:[{op:'+',aMax:100,bMax:100},{op:'-',aMax:100,bMax:100},{op:'x',aMax:9,bMax:9},{op:'÷',aMax:9,bMax:9}] }
+  };
+
+  const ROUND_SECONDS = 60;
+  const MAX_ANSWER_LEN = 4;
+
+  let level = "easy";
+  let timeLeft = ROUND_SECONDS;
+  let timerId = null;
+  let score = 0;
+  let attempted = 0;
+  let streak = 0;
+  let bestStreak = 0;
+  let correctTimes = [];
+  let currentQuestion = null;
+  let questionStart = 0;
+  let answerBuffer = "";
+  let locked = false;
+  let pendingResult = null;
+
+  const startScreen = document.getElementById("startScreen");
+  const playScreen = document.getElementById("playScreen");
+  const resultScreen = document.getElementById("resultScreen");
+  const levelDesc = document.getElementById("levelDesc");
+  const scoreNum = document.getElementById("scoreNum");
+  const streakNum = document.getElementById("streakNum");
+  const timeNum = document.getElementById("timeNum");
+  const trackFill = document.getElementById("trackFill");
+  const trackRocket = document.getElementById("trackRocket");
+  const questionCard = document.getElementById("questionCard");
+  const questionText = document.getElementById("questionText");
+  const answerDisplay = document.getElementById("answerDisplay");
+  const feedbackTag = document.getElementById("feedbackTag");
+  const keypadEl = document.getElementById("keypad");
+  const leaderboardListEl = document.getElementById("leaderboardList");
+  const nameDialog = document.getElementById("nameDialog");
+  const nameInput = document.getElementById("nameInput");
+  const consolationDialog = document.getElementById("consolationDialog");
+
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  function genQuestion(){
+    const list = LEVEL_INFO[level].ops;
+    const chosen = list[randInt(0,list.length-1)];
+    let a,b,answer,text;
+    switch(chosen.op){
+      case '+':
+        a = randInt(1,chosen.aMax); b = randInt(1,chosen.bMax);
+        answer = a+b; text = `${a} + ${b}`;
+        break;
+      case '-':
+        a = randInt(1,chosen.aMax); b = randInt(0,a);
+        answer = a-b; text = `${a} - ${b}`;
+        break;
+      case 'x':
+        a = randInt(1,chosen.aMax); b = randInt(1,chosen.bMax);
+        answer = a*b; text = `${a} × ${b}`;
+        break;
+      case '÷':
+        b = randInt(2,chosen.bMax);
+        const q = randInt(1,9);
+        a = b*q;
+        answer = q; text = `${a} ÷ ${b}`;
+        break;
+    }
+    return { text, answer };
+  }
+
+  function renderKeypad(){
+    keypadEl.innerHTML = "";
+    const layout = ["1","2","3","4","5","6","7","8","9","del","0","ok"];
+    layout.forEach(k=>{
+      const b = document.createElement("button");
+      if(k==="del"){
+        b.className = "key del"; b.textContent = "⌫ Xóa";
+        b.addEventListener("click", backspace);
+      } else if(k==="ok"){
+        b.className = "key ok"; b.textContent = "✓ OK";
+        b.addEventListener("click", submitAnswer);
+      } else {
+        b.className = "key"; b.textContent = k;
+        b.addEventListener("click", ()=>appendDigit(k));
+      }
+      keypadEl.appendChild(b);
+    });
+  }
+
+  function appendDigit(d){
+    if(locked) return;
+    if(answerBuffer.length >= MAX_ANSWER_LEN) return;
+    answerBuffer += d;
+    updateAnswerDisplay();
+  }
+  function backspace(){
+    if(locked) return;
+    answerBuffer = answerBuffer.slice(0,-1);
+    updateAnswerDisplay();
+  }
+  function updateAnswerDisplay(){
+    answerDisplay.innerHTML = (answerBuffer || "") + '<span class="cursor"></span>';
+  }
+
+  function nextQuestion(){
+    currentQuestion = genQuestion();
+    questionText.textContent = currentQuestion.text + " = ?";
+    answerBuffer = "";
+    updateAnswerDisplay();
+    questionCard.classList.remove("correct","wrong");
+    feedbackTag.classList.add("hidden");
+    questionStart = Date.now();
+    locked = false;
+  }
+
+  function submitAnswer(){
+    if(locked) return;
+    if(answerBuffer === "") return;
+    locked = true;
+    const val = parseInt(answerBuffer,10);
+    attempted++;
+    if(val === currentQuestion.answer){
+      score++;
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      correctTimes.push((Date.now()-questionStart)/1000);
+      questionCard.classList.add("correct");
+      scoreNum.textContent = score;
+      streakNum.textContent = streak;
+    } else {
+      streak = 0;
+      streakNum.textContent = streak;
+      questionCard.classList.add("wrong");
+      feedbackTag.textContent = `Đáp án đúng: ${currentQuestion.answer}`;
+      feedbackTag.classList.remove("hidden");
+    }
+    setTimeout(()=>{
+      if(timeLeft > 0) nextQuestion();
+    }, val === currentQuestion.answer ? 350 : 800);
+  }
+
+  function tick(){
+    timeLeft--;
+    timeNum.textContent = timeLeft;
+    const pct = Math.max(0, (timeLeft/ROUND_SECONDS)*100);
+    trackFill.style.width = pct + "%";
+    trackRocket.style.left = pct + "%";
+    if(timeLeft <= 0){
+      endRound();
+    }
+  }
+
+  function startRound(){
+    score = 0; attempted = 0; streak = 0; bestStreak = 0;
+    correctTimes = [];
+    timeLeft = ROUND_SECONDS;
+    locked = false;
+    scoreNum.textContent = 0;
+    streakNum.textContent = 0;
+    timeNum.textContent = timeLeft;
+    trackFill.style.width = "100%";
+    trackRocket.style.left = "100%";
+
+    startScreen.classList.add("hidden");
+    resultScreen.classList.add("hidden");
+    playScreen.classList.remove("hidden");
+
+    nextQuestion();
+    clearInterval(timerId);
+    timerId = setInterval(tick, 1000);
+  }
+
+  function endRound(){
+    clearInterval(timerId);
+    locked = true;
+    playScreen.classList.add("hidden");
+    resultScreen.classList.remove("hidden");
+
+    const accuracy = attempted>0 ? Math.round((score/attempted)*100) : 0;
+    const avgTime = correctTimes.length>0
+      ? (correctTimes.reduce((s,v)=>s+v,0)/correctTimes.length).toFixed(1)
+      : "0.0";
+
+    document.getElementById("resScore").textContent = score;
+    document.getElementById("resAttempted").textContent = attempted;
+    document.getElementById("resAccuracy").textContent = accuracy + "%";
+    document.getElementById("resBestStreak").textContent = bestStreak;
+    document.getElementById("resAvgTime").textContent = avgTime + "s";
+
+    let emoji, title, msg;
+    if(score >= 25){ emoji="🏆"; title="Xuất sắc!"; msg="Bé tính nhanh như chớp thật luôn!"; }
+    else if(score >= 15){ emoji="🌟"; title="Rất giỏi!"; msg="Bé làm tốt lắm, cố thêm chút nữa nhé!"; }
+    else if(score >= 8){ emoji="👍"; title="Khá lắm!"; msg="Bé đang tiến bộ rồi đó!"; }
+    else { emoji="💪"; title="Cố lên nào!"; msg="Luyện tập thêm bé sẽ nhanh hơn nữa!"; }
+    document.getElementById("resultEmoji").textContent = emoji;
+    document.getElementById("resultTitle").textContent = title;
+    document.getElementById("resultMsg").textContent = msg;
+
+    if(score === 0){
+      consolationDialog.classList.remove("hidden");
+    } else {
+      pendingResult = { level, score, accuracy };
+      nameInput.value = "";
+      nameDialog.classList.remove("hidden");
+      setTimeout(()=>nameInput.focus(), 200);
+    }
+  }
+
+  function selectLevel(lv){
+    level = lv;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.level===lv));
+    levelDesc.textContent = LEVEL_INFO[lv].desc;
+    renderLeaderboard(lv);
+  }
+
+  async function loadLeaderboard(lv){
+    try{
+      const res = await window.storage.get(`leaderboard:${lv}`, true);
+      if(!res || !res.value) return [];
+      const arr = JSON.parse(res.value);
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  async function saveScore(lv, name, sc, acc){
+    const arr = await loadLeaderboard(lv);
+    arr.push({ name, score: sc, accuracy: acc, date: Date.now() });
+    arr.sort((a,b)=> b.score - a.score);
+    const trimmed = arr.slice(0,20);
+    try{
+      await window.storage.set(`leaderboard:${lv}`, JSON.stringify(trimmed), true);
+    }catch(e){ /* ignore save errors */ }
+    return trimmed;
+  }
+
+  const MEDALS = ["🥇","🥈","🥉"];
+  async function renderLeaderboard(lv){
+    leaderboardListEl.innerHTML = '<div class="lb-loading">Đang tải...</div>';
+    const arr = await loadLeaderboard(lv);
+    if(arr.length === 0){
+      leaderboardListEl.innerHTML = '<div class="lb-empty">Chưa có ai lập kỷ lục. Bé thử sức trước tiên nhé!</div>';
+      return;
+    }
+    const top5 = arr.slice(0,5);
+    leaderboardListEl.innerHTML = top5.map((item, idx)=>{
+      const rank = MEDALS[idx] || (idx+1);
+      const safeName = (item.name || "Bé ẩn danh").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return `<div class="lb-row">
+        <div class="lb-rank">${rank}</div>
+        <div class="lb-name">${safeName}</div>
+        <div class="lb-score">${item.score} điểm</div>
+      </div>`;
+    }).join("");
+  }
+
+  function closeDialog(){
+    nameDialog.classList.add("hidden");
+    pendingResult = null;
+  }
+
+  document.getElementById("saveScoreBtn").addEventListener("click", async ()=>{
+    if(!pendingResult) { closeDialog(); return; }
+    const name = nameInput.value.trim() || "Bé ẩn danh";
+    const { level: lv, score: sc, accuracy: acc } = pendingResult;
+    await saveScore(lv, name, sc, acc);
+    closeDialog();
+    if(level === lv) renderLeaderboard(lv);
+  });
+  document.getElementById("skipSaveBtn").addEventListener("click", closeDialog);
+  document.getElementById("closeConsolationBtn").addEventListener("click", ()=>{
+    consolationDialog.classList.add("hidden");
+  });
+  nameInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter") document.getElementById("saveScoreBtn").click();
+  });
+
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click", ()=>selectLevel(tab.dataset.level));
+  });
+  document.getElementById("startBtn").addEventListener("click", startRound);
+  document.getElementById("playAgainBtn").addEventListener("click", ()=>{
+    resultScreen.classList.add("hidden");
+    startScreen.classList.remove("hidden");
+    renderLeaderboard(level);
+  });
+
+  document.addEventListener("keydown", (e)=>{
+    if(playScreen.classList.contains("hidden")) return;
+    if(e.key >= "0" && e.key <= "9") appendDigit(e.key);
+    else if(e.key === "Backspace") backspace();
+    else if(e.key === "Enter") submitAnswer();
+  });
+
+  renderKeypad();
+  document.querySelector(`.tab[data-level="easy"]`).classList.add("active");
+  levelDesc.textContent = LEVEL_INFO.easy.desc;
+  renderLeaderboard(level);
+})();
+</script>
+</body>
+</html>

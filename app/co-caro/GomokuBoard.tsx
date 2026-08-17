@@ -124,7 +124,6 @@ export function GomokuBoard({ state, players, disabled = false, blinking = false
         <button type="button" onClick={() => updateZoom(zoom - 0.1)} disabled={zoom <= 0.5} aria-label="Thu nhỏ">−</button>
         <output>{Math.round(zoom * 100)}% · {state.size} × {state.size}</output>
         <button type="button" onClick={() => updateZoom(zoom + 0.1)} disabled={zoom >= 2} aria-label="Phóng to">＋</button>
-        <button type="button" onClick={() => setPan({ x: 0, y: 0 })}>Căn giữa</button>
       </div>
       <div
         className="gomoku-viewport"
