@@ -18,6 +18,17 @@ export function createNumberOrder(maximum: number, random: () => number = Math.r
   return values;
 }
 
+const NUMBER_OFFSET_X = [-12, 6, 14, -6, 10, -14, 3, 12, -9, 8, -3, 13, -11, 4, -7, 11, -1, 7, -13, 2, 9, -5, 5];
+const NUMBER_OFFSET_Y = [8, -12, 3, 14, -7, 11, -3, -14, 6, -9, 13, -5, 9, -11, 4, 12, -1, -8, 7];
+
+export function getNumberOffset(index: number) {
+  const safeIndex = Number.isInteger(index) && index >= 0 ? index : 0;
+  return {
+    x: NUMBER_OFFSET_X[safeIndex % NUMBER_OFFSET_X.length],
+    y: NUMBER_OFFSET_Y[safeIndex % NUMBER_OFFSET_Y.length],
+  };
+}
+
 export function createNumberHunt(maximum: number, order = createNumberOrder(maximum)): NumberHuntState {
   if (!isValidMaximum(maximum) || !hasEveryNumberOnce(order, maximum)) {
     throw new Error("Bảng số không hợp lệ");

@@ -288,14 +288,14 @@ footer span { color: #f08770; }
 .sound-toggle { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; border: 1px solid #dce8df; border-radius: 14px; font-size: 12px; font-weight: 800; cursor: pointer; }
 .number-hunt-message { min-height: 26px; margin: 16px 0 0; color: #567262; text-align: center; font-weight: 800; }
 .number-hunt-grid { display: grid; grid-template-columns: repeat(var(--number-columns), minmax(0, 1fr)); gap: 7px; margin-top: 16px; }
-.number-hunt-cell { aspect-ratio: 1; min-height: 35px !important; padding: 2px !important; border-color: #dbece0 !important; border-radius: 50% !important; background: #fff !important; color: #245c45 !important; font-size: clamp(11px, 1.8vw, 18px); box-shadow: none !important; }
-.number-hunt-cell:hover:not(:disabled) { background: #edfaf0 !important; }
-.number-hunt-cell.is-found { border: 3px solid #2e9b65 !important; background: #ddf6e7 !important; color: #17623d !important; text-decoration: line-through; }
-.number-hunt-cell.is-wrong { border-color: #dc6756 !important; background: #ffe2dc !important; color: #a94031 !important; animation: number-hunt-wrong .45s ease; }
+.number-hunt-cell { aspect-ratio: 1; min-height: 35px !important; padding: 2px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: #245c45 !important; font-size: clamp(11px, 1.8vw, 18px); box-shadow: none !important; transform: translate(var(--number-offset-x), var(--number-offset-y)); }
+.number-hunt-cell:hover:not(:disabled) { background: transparent !important; color: #168050 !important; transform: translate(var(--number-offset-x), calc(var(--number-offset-y) - 2px)); }
+.number-hunt-cell.is-found { border: 3px solid #2e9b65 !important; border-radius: 50% !important; background: transparent !important; color: #17623d !important; text-decoration: none; }
+.number-hunt-cell.is-wrong { border: 0 !important; background: transparent !important; color: #a94031 !important; animation: number-hunt-wrong .45s ease; }
 .number-hunt-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 17px; }
 .number-hunt-complete { display: flex; align-items: center; gap: 17px; background: linear-gradient(120deg, #fffdf5, #eef9e9); border-color: #cce6c7; }
 .number-hunt-complete > span { font-size: 44px; }.number-hunt-complete > div { flex: 1; }.number-hunt-complete p { margin: 0; color: var(--muted); }
-@keyframes number-hunt-wrong { 30% { transform: translateX(-4px); } 70% { transform: translateX(4px); } }
+@keyframes number-hunt-wrong { 30% { transform: translate(calc(var(--number-offset-x) - 4px), var(--number-offset-y)); } 70% { transform: translate(calc(var(--number-offset-x) + 4px), var(--number-offset-y)); } }
 .number-hunt-print-sheet { position: fixed; left: -9999px; top: 0; display: block; width: 188mm; height: 275mm; overflow: hidden; visibility: hidden; }
 .number-hunt-print-sheet--landscape { width: 275mm; height: 188mm; }
 .number-hunt-print-sheet header { height: 12mm; min-width: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content max-content; align-items: center; gap: 3mm; overflow: hidden; white-space: nowrap; font: 8pt Arial, sans-serif; }

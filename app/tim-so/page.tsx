@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GameShell } from "../components/GameShell";
 import { readChildName } from "../lib/child-session";
 import { readVersionedStorage, writeVersionedStorage } from "../lib/versioned-storage";
-import { createNumberHunt, createNumberOrder, hasEveryNumberOnce, isValidMaximum, selectNumber, type NumberHuntState } from "./game";
+import { createNumberHunt, createNumberOrder, getNumberOffset, hasEveryNumberOnce, isValidMaximum, selectNumber, type NumberHuntState } from "./game";
 import { getPrintGeometry } from "./print-geometry";
 import { PrintSheet } from "./PrintSheet";
 
@@ -155,7 +155,7 @@ export default function NumberHuntPage() {
           <section className="number-hunt-card number-hunt-toolbar"><div><span>Đang tìm</span><strong>{completed ? "Hoàn thành!" : game.next}</strong></div><div><span>Thời gian</span><strong>{formatTime(elapsed)}</strong></div><div><span>Đã tìm</span><strong>{game.found.length}/{game.order.length}</strong></div><div><span>Lỗi</span><strong>{game.mistakes}</strong></div><label className="sound-toggle"><input type="checkbox" checked={sound} onChange={(event) => updateSound(event.target.checked)} /> 🔊 Âm thanh</label></section>
           <p className="number-hunt-message" role="status" aria-live="polite">{message}</p>
           <section className="number-hunt-grid" style={{ "--number-columns": Math.ceil(Math.sqrt(game.order.length)) } as React.CSSProperties} aria-label="Bảng tìm số">
-            {game.order.map((value) => { const found = game.found.includes(value); return <button key={value} disabled={found || completed} onClick={() => choose(value)} className={`number-hunt-cell${found ? " is-found" : ""}${wrongValue === value ? " is-wrong" : ""}`} aria-label={`Số ${value}${found ? ", đã tìm" : ""}`}>{value}</button>; })}
+            {game.order.map((value, index) => { const found = game.found.includes(value); const offset = getNumberOffset(index); return <button key={value} disabled={found || completed} onClick={() => choose(value)} className={`number-hunt-cell${found ? " is-found" : ""}${wrongValue === value ? " is-wrong" : ""}`} style={{ "--number-offset-x": `${offset.x}%`, "--number-offset-y": `${offset.y}%` } as React.CSSProperties} aria-label={`Số ${value}${found ? ", đã tìm" : ""}`}>{value}</button>; })}
           </section>
           {completed ? <section className="number-hunt-card number-hunt-complete"><span>🌟</span><div><h2>Giỏi quá, {childName || "bé"} ơi!</h2><p>Bé hoàn thành trong <strong>{formatTime(elapsed)}</strong> với {game.mistakes} lần chọn nhầm.</p></div><button onClick={() => start(game.order)}>Chơi lại</button><button className="secondary" onClick={() => start()}>Xáo lại</button><button className="secondary" onClick={printBoard}>In bảng mới</button></section> : <div className="number-hunt-actions"><button className="secondary" onClick={reshuffle}>Xáo lại bảng</button><button className="secondary" onClick={printBoard}>In bảng mới</button></div>}
         </>}
