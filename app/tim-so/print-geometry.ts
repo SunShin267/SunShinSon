@@ -8,8 +8,8 @@ export type PrintGeometry = {
 };
 
 const PAGE = {
-  portrait: { width: 190, height: 277 },
-  landscape: { width: 277, height: 190 },
+  portrait: { width: 188, height: 275 },
+  landscape: { width: 275, height: 188 },
 };
 const HEADER_HEIGHT = 12;
 
