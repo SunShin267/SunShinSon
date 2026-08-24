@@ -70,6 +70,7 @@ CREATE INDEX `xiangqi_invites_status_expiry_idx` ON `xiangqi_invites` (`status`,
 CREATE TABLE `xiangqi_moves` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`game_id` text NOT NULL,
+	`game_revision` integer NOT NULL,
 	`ply` integer NOT NULL,
 	`side` text NOT NULL,
 	`from_x` integer NOT NULL,
@@ -81,6 +82,7 @@ CREATE TABLE `xiangqi_moves` (
 	`black_clock_ms` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`game_id`) REFERENCES `xiangqi_games`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "xiangqi_moves_game_revision_check" CHECK("xiangqi_moves"."game_revision" > 0),
 	CONSTRAINT "xiangqi_moves_ply_check" CHECK("xiangqi_moves"."ply" > 0),
 	CONSTRAINT "xiangqi_moves_side_check" CHECK("xiangqi_moves"."side" IN ('red', 'black')),
 	CONSTRAINT "xiangqi_moves_coords_check" CHECK("xiangqi_moves"."from_x" BETWEEN 0 AND 8 AND "xiangqi_moves"."to_x" BETWEEN 0 AND 8 AND "xiangqi_moves"."from_y" BETWEEN 0 AND 9 AND "xiangqi_moves"."to_y" BETWEEN 0 AND 9),
@@ -88,6 +90,7 @@ CREATE TABLE `xiangqi_moves` (
 	CONSTRAINT "xiangqi_moves_clock_check" CHECK("xiangqi_moves"."red_clock_ms" >= 0 AND "xiangqi_moves"."black_clock_ms" >= 0)
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `xiangqi_moves_game_revision_unique` ON `xiangqi_moves` (`game_id`,`game_revision`);--> statement-breakpoint
 CREATE UNIQUE INDEX `xiangqi_moves_game_ply_unique` ON `xiangqi_moves` (`game_id`,`ply`);--> statement-breakpoint
 CREATE INDEX `xiangqi_moves_game_created_idx` ON `xiangqi_moves` (`game_id`,`created_at`);--> statement-breakpoint
 CREATE TABLE `xiangqi_presence` (

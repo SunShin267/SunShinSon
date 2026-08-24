@@ -1067,15 +1067,16 @@ async function commandMove(
   );
   const insertMove = env.DB.prepare(`
     INSERT INTO xiangqi_moves (
-      game_id, ply, side, from_x, from_y, to_x, to_y, revealed_role,
+      game_id, game_revision, ply, side, from_x, from_y, to_x, to_y, revealed_role,
       red_clock_ms, black_clock_ms, created_at
     )
-    SELECT ?, (SELECT COALESCE(MAX(ply), 0) + 1 FROM xiangqi_moves WHERE game_id = ?),
+    SELECT ?, ?, (SELECT COALESCE(MAX(ply), 0) + 1 FROM xiangqi_moves WHERE game_id = ?),
       ?, ?, ?, ?, ?, ?, ?, ?, ?
     FROM xiangqi_games
     WHERE id = ? AND revision = ? AND state_json = ?
   `).bind(
     game.id,
+    nextRevision,
     game.id,
     side,
     move.from[0],

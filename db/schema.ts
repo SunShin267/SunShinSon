@@ -120,6 +120,7 @@ export const xiangqiPresence = sqliteTable("xiangqi_presence", {
 export const xiangqiMoves = sqliteTable("xiangqi_moves", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   gameId: text("game_id").notNull().references(() => xiangqiGames.id, { onDelete: "cascade" }),
+  gameRevision: integer("game_revision").notNull(),
   ply: integer("ply").notNull(),
   side: text("side").notNull(),
   fromX: integer("from_x").notNull(),
@@ -131,8 +132,10 @@ export const xiangqiMoves = sqliteTable("xiangqi_moves", {
   blackClockMs: integer("black_clock_ms").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
+  uniqueIndex("xiangqi_moves_game_revision_unique").on(table.gameId, table.gameRevision),
   uniqueIndex("xiangqi_moves_game_ply_unique").on(table.gameId, table.ply),
   index("xiangqi_moves_game_created_idx").on(table.gameId, table.createdAt),
+  check("xiangqi_moves_game_revision_check", sql`${table.gameRevision} > 0`),
   check("xiangqi_moves_ply_check", sql`${table.ply} > 0`),
   check("xiangqi_moves_side_check", sql`${table.side} IN ('red', 'black')`),
   check("xiangqi_moves_coords_check", sql`${table.fromX} BETWEEN 0 AND 8 AND ${table.toX} BETWEEN 0 AND 8 AND ${table.fromY} BETWEEN 0 AND 9 AND ${table.toY} BETWEEN 0 AND 9`),

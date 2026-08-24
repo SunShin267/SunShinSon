@@ -668,6 +668,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "game_revision": {
+          "name": "game_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "ply": {
           "name": "ply",
           "type": "integer",
@@ -740,6 +747,14 @@
         }
       },
       "indexes": {
+        "xiangqi_moves_game_revision_unique": {
+          "name": "xiangqi_moves_game_revision_unique",
+          "columns": [
+            "game_id",
+            "game_revision"
+          ],
+          "isUnique": true
+        },
         "xiangqi_moves_game_ply_unique": {
           "name": "xiangqi_moves_game_ply_unique",
           "columns": [
@@ -775,6 +790,10 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {
+        "xiangqi_moves_game_revision_check": {
+          "name": "xiangqi_moves_game_revision_check",
+          "value": "\"xiangqi_moves\".\"game_revision\" > 0"
+        },
         "xiangqi_moves_ply_check": {
           "name": "xiangqi_moves_ply_check",
           "value": "\"xiangqi_moves\".\"ply\" > 0"
