@@ -6,7 +6,7 @@ const siteUrl = process.env.SITE_URL?.trim() || `https://sunshin267.github.io${b
 const metadataBase = new URL(`${siteUrl.replace(/\/$/, "")}/`);
 const socialImageUrl = new URL("og.png", metadataBase).toString();
 const title = "SunShinSon · Vui học mỗi ngày";
-const description = "Không gian vui học dành cho bé với Tìm số, Cờ caro, Cờ vua và nhiều hoạt động khám phá mỗi ngày.";
+const description = "Không gian vui học dành cho bé với Tìm số, Cờ caro, Cờ vua, Cờ tướng và nhiều hoạt động khám phá mỗi ngày.";
 
 export const metadata: Metadata = {
   metadataBase,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
       url: socialImageUrl,
       width: 1734,
       height: 907,
-      alt: "SunShinSon với các hoạt động Tìm số, Cờ caro và Cờ vua",
+      alt: "SunShinSon với các hoạt động Tìm số, Cờ caro, Cờ vua và Cờ tướng",
     }],
   },
   twitter: {
