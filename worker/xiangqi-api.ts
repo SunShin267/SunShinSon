@@ -781,7 +781,7 @@ async function handleAcceptInvite(
     const statements = [
       env.DB.prepare(`
         UPDATE xiangqi_invites
-        SET status = 'accepted', game_id = ?, updated_at = ?
+        SET status = 'accepted', updated_at = ?
         WHERE id = ? AND status = 'pending' AND expires_at > ?
           AND ((kind = 'direct' AND to_session_id = ?)
             OR (kind = 'link' AND to_session_id IS NULL AND from_session_id <> ?))
@@ -794,7 +794,6 @@ async function handleAcceptInvite(
             WHERE other.from_session_id = ? AND other.status = 'pending' AND other.id <> ?
           )
       `).bind(
-        gameId,
         now,
         inviteId,
         now,
@@ -817,7 +816,7 @@ async function handleAcceptInvite(
         SELECT ?, ?, ?, variant, ?, ?, 0, NULL, ?, ?, NULL,
           0, 0, NULL, 0, 0, 'active', NULL, NULL, ?, ?, NULL
         FROM xiangqi_invites
-        WHERE id = ? AND status = 'accepted' AND game_id = ?
+        WHERE id = ? AND status = 'accepted' AND game_id IS NULL
       `).bind(
         gameId,
         redSessionId,
@@ -827,6 +826,16 @@ async function handleAcceptInvite(
         timeControlMs,
         timeControlMs,
         now,
+        now,
+        inviteId,
+      ),
+      env.DB.prepare(`
+        UPDATE xiangqi_invites
+        SET game_id = ?, updated_at = ?
+        WHERE id = ? AND status = 'accepted' AND game_id IS NULL
+          AND EXISTS (SELECT 1 FROM xiangqi_games WHERE id = ?)
+      `).bind(
+        gameId,
         now,
         inviteId,
         gameId,
@@ -852,7 +861,11 @@ async function handleAcceptInvite(
       `).bind(gameId, now, invite.from_session_id, session.id, gameId),
     ];
     const results = await env.DB.batch(statements);
-    if ((results[0]?.meta.changes ?? 0) !== 1 || (results[1]?.meta.changes ?? 0) !== 1) {
+    if (
+      (results[0]?.meta.changes ?? 0) !== 1
+      || (results[1]?.meta.changes ?? 0) !== 1
+      || (results[2]?.meta.changes ?? 0) !== 1
+    ) {
       const concurrentInvite = await findInvite(env, inviteId);
       if (concurrentInvite?.status === "accepted" && concurrentInvite.game_id) {
         const acceptedGame = await participantGame(env, concurrentInvite.game_id, session.id);
