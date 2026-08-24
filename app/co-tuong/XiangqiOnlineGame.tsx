@@ -27,6 +27,7 @@ type ConnectionState = "connecting" | "connected" | "retrying";
 type ClockValues = Record<Side, number>;
 
 const RETRY_DELAYS = [1_000, 2_000, 4_000, 8_000] as const;
+const HEARTBEAT_INTERVAL_MS = 10_000;
 const ROLE_LABELS: Record<PieceRole, string> = {
   general: "Tướng", advisor: "Sĩ", elephant: "Tượng", horse: "Mã",
   rook: "Xe", cannon: "Pháo", soldier: "Tốt",
@@ -199,6 +200,42 @@ export function XiangqiOnlineGame({
     };
   }, [applySnapshot, client, onSessionRequired, pollGeneration, resolvedGameId]);
 
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+    let interval: number | null = null;
+    let controller: AbortController | null = null;
+
+    const heartbeat = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      controller = new AbortController();
+      try {
+        await client.heartbeat(controller.signal);
+      } catch (error) {
+        if (!active || (error instanceof DOMException && error.name === "AbortError")) return;
+        if (classifyXiangqiFailure(error) === "session") {
+          active = false;
+          if (interval !== null) window.clearInterval(interval);
+          onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+          return;
+        }
+        setConnectionMessage("Chưa thể cập nhật trạng thái online. Đang thử lại…");
+      } finally {
+        inFlight = false;
+        controller = null;
+      }
+    };
+
+    void heartbeat();
+    interval = window.setInterval(() => { void heartbeat(); }, HEARTBEAT_INTERVAL_MS);
+    return () => {
+      active = false;
+      if (interval !== null) window.clearInterval(interval);
+      controller?.abort();
+    };
+  }, [client, onSessionRequired]);
+
   const sendCommand = useCallback(async (command: XiangqiCommand, successMessage?: string) => {
     const current = snapshotRef.current;
     if (!current || busyCommand) return;
@@ -220,6 +257,46 @@ export function XiangqiOnlineGame({
       setBusyCommand(null);
     }
   }, [applySnapshot, busyCommand, client, onSessionRequired]);
+
+  const leaveReadyRoom = useCallback(async () => {
+    let current = snapshotRef.current;
+    if (!current || busyCommand) return;
+
+    setBusyCommand("resign");
+    setConnectionMessage("Đang rời phòng…");
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const next = await client.command(current.id, { type: "resign" }, current.revision);
+          applySnapshot(next);
+          onReturnToLobby();
+          return;
+        } catch (error) {
+          if (isXiangqiApiError(error) && error.latestGame) {
+            current = error.latestGame;
+            applySnapshot(current);
+            if (current.status.kind !== "active") {
+              onReturnToLobby();
+              return;
+            }
+            if (attempt === 0) continue;
+          }
+          if (classifyXiangqiFailure(error) === "session") {
+            onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+            return;
+          }
+          const message = isXiangqiApiError(error)
+            ? error.issue.message
+            : "Chưa thể rời phòng. Bé hãy thử lại để kết thúc ván trên máy chủ.";
+          setConnectionMessage(message);
+          setAnnouncement(message);
+          return;
+        }
+      }
+    } finally {
+      setBusyCommand(null);
+    }
+  }, [applySnapshot, busyCommand, client, onReturnToLobby, onSessionRequired]);
 
   const scheduleReadyRetry = useCallback((delay: number) => {
     if (readyRetryTimerRef.current !== null) window.clearTimeout(readyRetryTimerRef.current);
@@ -384,7 +461,7 @@ export function XiangqiOnlineGame({
           ))}
         </div>
         <p className={`xiangqi-online-connection is-${connection}`} role="status" aria-live="polite"><span aria-hidden="true" />{connectionMessage || connectionLabel}</p>
-        <button type="button" className="xiangqi-secondary-button" onClick={onReturnToLobby}>Rời phòng</button>
+        <button type="button" className="xiangqi-secondary-button" disabled={Boolean(busyCommand)} onClick={() => void leaveReadyRoom()}>{busyCommand === "resign" ? "Đang rời phòng…" : "Rời phòng"}</button>
       </section>
     );
   }

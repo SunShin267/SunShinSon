@@ -151,10 +151,15 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   }, [onlineClient]);
 
   const requestOnlineName = useCallback((message: string) => {
-    setLoginName(readChildName());
+    const savedName = readChildName();
+    if (!inviteCode && !savedName) {
+      navigateInternal("/", true);
+      return;
+    }
+    setLoginName(savedName);
     setOnlineError(message);
     setOnlinePhase("name");
-  }, []);
+  }, [inviteCode]);
 
   useEffect(() => {
     const savedName = readChildName();
@@ -289,9 +294,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
 
     const afterMove = `${actorName} vừa đi ${coordLabel(legal.from)} đến ${coordLabel(legal.to)}.${revealText}${fallbackText}`;
     if (latest?.revealedRole) {
-      runningSideRef.current = null;
-      lastClockMarkRef.current = null;
-      setRunningSide(null);
+      beginTurn(next.turn);
       setRevealing(true);
       setAnnouncement(afterMove);
       const expectedRevision = revisionRef.current;
@@ -299,7 +302,6 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
         revealTimerRef.current = null;
         if (revisionRef.current !== expectedRevision || gameRef.current !== next) return;
         setRevealing(false);
-        beginTurn(next.turn);
         setAnnouncement(`${afterMove} ${turnMessage(next, currentConfig, playerName)}`);
       }, 460);
       return;
@@ -334,6 +336,10 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   function handleSetup(configChoice: XiangqiConfig) {
     if (configChoice.mode === "online") {
       const savedName = readChildName();
+      if (!savedName && !inviteCode) {
+        navigateInternal("/", true);
+        return;
+      }
       setOnlineConfig(configChoice);
       setSetupNotice("");
       if (!savedName) {
