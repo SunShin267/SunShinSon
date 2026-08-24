@@ -50,6 +50,16 @@ const topics: Topic[] = [
     preview: ["Nhận biết quân cờ", "Bài học đầu tiên", "Thử thách nhỏ"],
   },
   {
+    id: "co-tuong",
+    title: "Chơi cờ tướng",
+    eyebrow: "Rèn tư duy",
+    description: "Cùng bé khám phá bàn cờ tướng và những nước đi thật thông minh.",
+    icon: "🏯",
+    color: "#c94d4d",
+    accent: "#ffe1df",
+    preview: ["Nhận biết quân cờ", "Bài học đầu tiên", "Thử thách nhỏ"],
+  },
+  {
     id: "tim-so",
     title: "Chơi tìm số",
     eyebrow: "Nhanh mắt nhanh tay",
@@ -177,7 +187,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
         <section className="topics-section" aria-labelledby="topics-title">
           <div className="section-heading">
             <h2 id="topics-title">Góc vui học</h2>
-            <span>7 hoạt động dành cho bé</span>
+            <span>8 hoạt động dành cho bé</span>
           </div>
           <div className="topic-grid">
             {topics.map((topic, index) => (
@@ -201,6 +211,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
                     "tim-so": "/tim-so",
                     "co-caro": "/co-caro",
                     "co-vua": "/co-vua",
+                    "co-tuong": "/co-tuong",
                   };
                   const gamePath = gamePaths[topic.id];
                   if (gamePath) {
