@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { XiangqiVariant } from "../../lib/xiangqi/types";
 import { internalPath } from "../lib/navigation";
 import {
+  classifyXiangqiFailure,
   isXiangqiApiError,
   type XiangqiClockMinutes,
   type XiangqiInvite,
@@ -21,6 +22,7 @@ type XiangqiLobbyProps = {
   inviteCode?: string;
   onEnterGame: (gameId: string) => void;
   onBack: () => void;
+  onSessionRequired: (message: string) => void;
 };
 
 const STATUS_GROUPS: readonly [XiangqiPresenceStatus, string, string][] = [
@@ -59,13 +61,18 @@ export function XiangqiLobby({
   inviteCode,
   onEnterGame,
   onBack,
+  onSessionRequired,
 }: XiangqiLobbyProps) {
   const [lobby, setLobby] = useState<XiangqiLobbySnapshot | null>(null);
   const [connectionMessage, setConnectionMessage] = useState("Đang kết nối với sảnh…");
   const [notice, setNotice] = useState("");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [roomJoinError, setRoomJoinError] = useState("");
+  const [fatalError, setFatalError] = useState("");
+  const [pollGeneration, setPollGeneration] = useState(0);
   const acceptingRoomRef = useRef<string | null>(null);
+  const autoAcceptAttemptedRef = useRef<string | null>(null);
   const enteredGameRef = useRef<string | null>(null);
 
   const enterGame = useCallback((gameId: string) => {
@@ -78,6 +85,7 @@ export function XiangqiLobby({
     await client.heartbeat(signal);
     const next = await client.loadLobby(inviteCode, signal);
     setLobby(next);
+    setFatalError("");
     setConnectionMessage("");
     if (next.activeGame) enterGame(next.activeGame.id);
     return next;
@@ -103,6 +111,19 @@ export function XiangqiLobby({
         schedule(3_000);
       } catch (error) {
         if (!active || (error instanceof DOMException && error.name === "AbortError")) return;
+        const failureKind = classifyXiangqiFailure(error);
+        if (failureKind === "session") {
+          active = false;
+          onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+          return;
+        }
+        if (failureKind === "permanent") {
+          active = false;
+          const message = isXiangqiApiError(error) ? error.issue.message : "Sảnh online không còn truy cập được.";
+          setFatalError(message);
+          setConnectionMessage(message);
+          return;
+        }
         const delay = RETRY_DELAYS[Math.min(retryIndex, RETRY_DELAYS.length - 1)];
         retryIndex += 1;
         setConnectionMessage(`Mất kết nối sảnh. Thử lại sau ${delay / 1_000} giây…`);
@@ -123,25 +144,37 @@ export function XiangqiLobby({
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.removeEventListener("focus", syncWhenVisible);
     };
-  }, [updateLobby]);
+  }, [onSessionRequired, pollGeneration, updateLobby]);
+
+  const acceptRoom = useCallback(async (room: XiangqiInvite) => {
+    if (acceptingRoomRef.current === room.id) return;
+    acceptingRoomRef.current = room.id;
+    setBusyAction(`accept-${room.id}`);
+    setRoomJoinError("");
+    setNotice("Đang nhận lời mời và xếp màu quân…");
+    try {
+      const game = await client.acceptInvite(room.id);
+      enterGame(game.id);
+    } catch (error) {
+      if (classifyXiangqiFailure(error) === "session") {
+        onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+      } else {
+        setRoomJoinError(isXiangqiApiError(error) ? error.issue.message : "Chưa thể vào phòng. Bé có thể thử lại thủ công.");
+      }
+    } finally {
+      acceptingRoomRef.current = null;
+      setBusyAction(null);
+    }
+  }, [client, enterGame, onSessionRequired]);
 
   useEffect(() => {
     if (!inviteCode || !lobby || lobby.activeGame) return;
     const room = lobby.room;
     if (!room || roomMessage(room, lobby.serverNow) || room.from.id === lobby.player.id) return;
-    if (acceptingRoomRef.current === room.id) return;
-    acceptingRoomRef.current = room.id;
-    setBusyAction(`accept-${room.id}`);
-    setNotice("Đang nhận lời mời và xếp màu quân…");
-    client.acceptInvite(room.id)
-      .then((game) => enterGame(game.id))
-      .catch((error: unknown) => {
-        acceptingRoomRef.current = null;
-        setNotice(isXiangqiApiError(error) ? error.issue.message : "Chưa thể vào phòng. Vui lòng thử lại.");
-        void updateLobby();
-      })
-      .finally(() => setBusyAction(null));
-  }, [client, enterGame, inviteCode, lobby, updateLobby]);
+    if (autoAcceptAttemptedRef.current === room.id) return;
+    autoAcceptAttemptedRef.current = room.id;
+    void acceptRoom(room);
+  }, [acceptRoom, inviteCode, lobby]);
 
   const groupedPlayers = useMemo(() => {
     const groups: Record<XiangqiPresenceStatus, XiangqiOnlinePlayer[]> = {
@@ -167,7 +200,11 @@ export function XiangqiLobby({
       setNotice(successMessage);
       if (refresh) await updateLobby();
     } catch (error) {
-      setNotice(isXiangqiApiError(error) ? error.issue.message : "Thao tác chưa thành công. Vui lòng thử lại.");
+      if (classifyXiangqiFailure(error) === "session") {
+        onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+      } else {
+        setNotice(isXiangqiApiError(error) ? error.issue.message : "Thao tác chưa thành công. Vui lòng thử lại.");
+      }
     } finally {
       setBusyAction(null);
     }
@@ -181,6 +218,21 @@ export function XiangqiLobby({
     } catch {
       setCopyFeedback("Chưa thể sao chép tự động. Hãy chọn và sao chép link bên dưới.");
     }
+  }
+
+  if (fatalError) {
+    return (
+      <section className="xiangqi-card xiangqi-room-state" aria-labelledby="xiangqi-lobby-error-title">
+        <span aria-hidden="true">⚠</span>
+        <p className="xiangqi-kicker">Sảnh online</p>
+        <h2 id="xiangqi-lobby-error-title">Không thể mở sảnh</h2>
+        <p role="alert">{fatalError}</p>
+        <div className="xiangqi-inline-actions">
+          <button type="button" className="xiangqi-primary-button" onClick={() => { setFatalError(""); setConnectionMessage("Đang kết nối lại sảnh…"); setPollGeneration((value) => value + 1); }}>Thử tải lại</button>
+          <button type="button" className="xiangqi-secondary-button" onClick={onBack}>Về trang Cờ tướng</button>
+        </div>
+      </section>
+    );
   }
 
   if (roomProblem) {
@@ -281,6 +333,15 @@ export function XiangqiLobby({
         </div>
       ) : busyAction?.startsWith("accept-") ? (
         <div className="xiangqi-room-joining" role="status"><span aria-hidden="true">♟</span><strong>Đang vào phòng…</strong><p>Màu quân sẽ được máy chủ xáo ngẫu nhiên.</p></div>
+      ) : roomJoinError && lobby?.room ? (
+        <div className="xiangqi-invite-panel xiangqi-room-recovery" role="alert">
+          <div><strong>Chưa thể vào phòng</strong><p>{roomJoinError}</p></div>
+          {waitingInvite ? <p>Bé đang có một lời mời/phòng khác. Hãy hủy lời mời đó trước rồi thử vào lại.</p> : null}
+          <div className="xiangqi-inline-actions">
+            {waitingInvite ? <button type="button" className="xiangqi-secondary-button" disabled={busyAction === `cancel-${waitingInvite.id}`} onClick={() => runAction(`cancel-${waitingInvite.id}`, () => client.cancelInvite(waitingInvite.id), "Đã hủy lời mời đang chờ. Bé có thể thử vào phòng lại.")}>Hủy lời mời đang chờ</button> : null}
+            <button type="button" className="xiangqi-primary-button" disabled={Boolean(busyAction)} onClick={() => void acceptRoom(lobby.room!)}>Thử vào lại</button>
+          </div>
+        </div>
       ) : null}
 
       <button type="button" className="xiangqi-lobby-back" onClick={onBack}>← {inviteCode ? "Về trang Cờ tướng" : "Đổi loại cờ hoặc thời gian"}</button>

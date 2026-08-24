@@ -7,6 +7,7 @@ import { coordKey, otherSide, sameCoord, type Coord, type PieceRole, type Side }
 import { XiangqiBoard } from "./XiangqiBoard";
 import { XiangqiClock } from "./XiangqiClock";
 import {
+  classifyXiangqiFailure,
   isXiangqiApiError,
   type XiangqiCommand,
   type XiangqiGameSnapshot,
@@ -19,6 +20,7 @@ type XiangqiOnlineGameProps = {
   inviteCode?: string;
   onReturnToLobby: () => void;
   onActiveChange?: (active: boolean) => void;
+  onSessionRequired: (message: string) => void;
 };
 
 type ConnectionState = "connecting" | "connected" | "retrying";
@@ -73,6 +75,7 @@ export function XiangqiOnlineGame({
   inviteCode,
   onReturnToLobby,
   onActiveChange,
+  onSessionRequired,
 }: XiangqiOnlineGameProps) {
   const [invitedGameId, setInvitedGameId] = useState("");
   const resolvedGameId = gameId ?? invitedGameId;
@@ -82,10 +85,16 @@ export function XiangqiOnlineGame({
   const [announcement, setAnnouncement] = useState("Đang đồng bộ bàn cờ từ máy chủ…");
   const [selectedSquare, setSelectedSquare] = useState<Coord | null>(null);
   const [busyCommand, setBusyCommand] = useState<XiangqiCommand["type"] | null>(null);
+  const [fatalError, setFatalError] = useState("");
+  const [pollGeneration, setPollGeneration] = useState(0);
+  const [resolveGeneration, setResolveGeneration] = useState(0);
+  const [readyRetryVersion, setReadyRetryVersion] = useState(0);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const snapshotRef = useRef<XiangqiGameSnapshot | null>(null);
   const readyInFlightRef = useRef(false);
+  const readyRetryIndexRef = useRef(0);
+  const readyRetryTimerRef = useRef<number | null>(null);
 
   const applySnapshot = useCallback((next: XiangqiGameSnapshot) => {
     const current = snapshotRef.current;
@@ -93,6 +102,7 @@ export function XiangqiOnlineGame({
     snapshotRef.current = next;
     setReceivedAt(Date.now());
     setSnapshot(next);
+    setFatalError("");
     setSelectedSquare(null);
     setConnection("connected");
     setConnectionMessage("Đã kết nối");
@@ -117,11 +127,14 @@ export function XiangqiOnlineGame({
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setConnection("retrying");
-        setConnectionMessage(isXiangqiApiError(error) ? error.issue.message : error instanceof Error ? error.message : "Chưa thể mở phòng mời.");
+        if (classifyXiangqiFailure(error) === "session") {
+          onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+          return;
+        }
+        setFatalError(isXiangqiApiError(error) ? error.issue.message : error instanceof Error ? error.message : "Chưa thể mở phòng mời.");
       });
     return () => controller.abort();
-  }, [applySnapshot, client, inviteCode, resolvedGameId]);
+  }, [applySnapshot, client, inviteCode, onSessionRequired, resolveGeneration, resolvedGameId]);
 
   useEffect(() => {
     if (!resolvedGameId) return;
@@ -139,7 +152,8 @@ export function XiangqiOnlineGame({
       controller?.abort();
       controller = new AbortController();
       try {
-        const next = await client.loadGame(resolvedGameId, controller.signal);
+        const hasCurrentSnapshot = snapshotRef.current?.id === resolvedGameId;
+        const next = await client.loadGame(resolvedGameId, controller.signal, { allowNotModified: hasCurrentSnapshot });
         if (next) applySnapshot(next);
         else {
           setConnection("connected");
@@ -149,6 +163,19 @@ export function XiangqiOnlineGame({
         schedule(1_000);
       } catch (error) {
         if (!active || (error instanceof DOMException && error.name === "AbortError")) return;
+        const failureKind = classifyXiangqiFailure(error);
+        if (failureKind === "session") {
+          active = false;
+          onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+          return;
+        }
+        if (failureKind === "permanent") {
+          active = false;
+          const message = isXiangqiApiError(error) ? error.issue.message : "Ván cờ không còn truy cập được.";
+          setFatalError(message);
+          setConnectionMessage(message);
+          return;
+        }
         const delay = RETRY_DELAYS[Math.min(retryIndex, RETRY_DELAYS.length - 1)];
         retryIndex += 1;
         setConnection("retrying");
@@ -170,7 +197,7 @@ export function XiangqiOnlineGame({
       document.removeEventListener("visibilitychange", syncNow);
       window.removeEventListener("focus", syncNow);
     };
-  }, [applySnapshot, client, resolvedGameId]);
+  }, [applySnapshot, client, onSessionRequired, pollGeneration, resolvedGameId]);
 
   const sendCommand = useCallback(async (command: XiangqiCommand, successMessage?: string) => {
     const current = snapshotRef.current;
@@ -184,26 +211,71 @@ export function XiangqiOnlineGame({
       if (isXiangqiApiError(error) && error.latestGame) {
         applySnapshot(error.latestGame);
         setAnnouncement("Ván cờ vừa thay đổi. Bàn đã được đồng bộ lại theo máy chủ.");
+      } else if (classifyXiangqiFailure(error) === "session") {
+        onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
       } else {
         setAnnouncement(isXiangqiApiError(error) ? error.issue.message : "Lệnh chưa gửi được. Bàn cờ vẫn giữ nguyên để chờ đồng bộ.");
       }
     } finally {
       setBusyCommand(null);
     }
-  }, [applySnapshot, busyCommand, client]);
+  }, [applySnapshot, busyCommand, client, onSessionRequired]);
+
+  const scheduleReadyRetry = useCallback((delay: number) => {
+    if (readyRetryTimerRef.current !== null) window.clearTimeout(readyRetryTimerRef.current);
+    readyRetryTimerRef.current = window.setTimeout(() => {
+      readyRetryTimerRef.current = null;
+      setReadyRetryVersion((value) => value + 1);
+    }, delay);
+  }, []);
 
   useEffect(() => {
-    if (!snapshot || snapshot.status.kind !== "active" || snapshot.players[snapshot.you.side].ready || readyInFlightRef.current) return;
+    if (!snapshot || snapshot.status.kind !== "active") return;
+    if (snapshot.players[snapshot.you.side].ready) {
+      readyRetryIndexRef.current = 0;
+      if (readyRetryTimerRef.current !== null) window.clearTimeout(readyRetryTimerRef.current);
+      readyRetryTimerRef.current = null;
+      return;
+    }
+    if (readyInFlightRef.current) return;
+    if (readyRetryTimerRef.current !== null) window.clearTimeout(readyRetryTimerRef.current);
+    readyRetryTimerRef.current = null;
     readyInFlightRef.current = true;
     const revision = snapshot.revision;
     client.command(snapshot.id, { type: "ready" }, revision)
       .then(applySnapshot)
       .catch((error: unknown) => {
-        if (isXiangqiApiError(error) && error.latestGame) applySnapshot(error.latestGame);
-        else setConnectionMessage(isXiangqiApiError(error) ? error.issue.message : "Chưa thể báo sẵn sàng. Đang thử lại…");
+        if (isXiangqiApiError(error) && error.latestGame) {
+          applySnapshot(error.latestGame);
+          scheduleReadyRetry(0);
+          return;
+        }
+        const failureKind = classifyXiangqiFailure(error);
+        if (failureKind === "session") {
+          onSessionRequired(isXiangqiApiError(error) ? error.issue.message : "Phiên online đã hết hạn. Bé hãy nhập lại tên.");
+          return;
+        }
+        if (failureKind === "permanent") {
+          const code = isXiangqiApiError(error) ? error.issue.code : "";
+          if (code === "game_finished") {
+            setConnectionMessage(isXiangqiApiError(error) ? error.issue.message : "Không thể báo sẵn sàng cho ván này.");
+          } else {
+            setFatalError(isXiangqiApiError(error) ? error.issue.message : "Không thể báo sẵn sàng cho ván này.");
+          }
+          return;
+        }
+        const delay = RETRY_DELAYS[Math.min(readyRetryIndexRef.current, RETRY_DELAYS.length - 1)];
+        readyRetryIndexRef.current += 1;
+        setConnection("retrying");
+        setConnectionMessage(`Chưa báo sẵn sàng được. Thử lại sau ${delay / 1_000} giây…`);
+        scheduleReadyRetry(delay);
       })
       .finally(() => { readyInFlightRef.current = false; });
-  }, [applySnapshot, client, snapshot]);
+  }, [applySnapshot, client, onSessionRequired, readyRetryVersion, scheduleReadyRetry, snapshot]);
+
+  useEffect(() => () => {
+    if (readyRetryTimerRef.current !== null) window.clearTimeout(readyRetryTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => setClockNow(Date.now()), 250);
@@ -257,6 +329,21 @@ export function XiangqiOnlineGame({
       return;
     }
     void sendCommand({ type: "move", move }, `Đã gửi nước ${coordLabel(move.from)} đến ${coordLabel(move.to)}.`);
+  }
+
+  if (fatalError) {
+    return (
+      <section className="xiangqi-card xiangqi-room-state" aria-labelledby="xiangqi-game-error-title">
+        <span aria-hidden="true">⚠</span>
+        <p className="xiangqi-kicker">Ván online</p>
+        <h2 id="xiangqi-game-error-title">Không thể mở ván cờ</h2>
+        <p role="alert">{fatalError}</p>
+        <div className="xiangqi-inline-actions">
+          <button type="button" className="xiangqi-primary-button" onClick={() => { setFatalError(""); setConnection("connecting"); setConnectionMessage("Đang thử tải lại ván cờ…"); if (resolvedGameId) setPollGeneration((value) => value + 1); else setResolveGeneration((value) => value + 1); }}>Thử tải lại</button>
+          <button type="button" className="xiangqi-secondary-button" onClick={onReturnToLobby}>Về sảnh</button>
+        </div>
+      </section>
+    );
   }
 
   if (!snapshot) {

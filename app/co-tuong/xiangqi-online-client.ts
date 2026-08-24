@@ -237,9 +237,15 @@ export class XiangqiOnlineClient {
     });
   }
 
-  async loadGame(gameId: string, signal?: AbortSignal): Promise<XiangqiGameSnapshot | null> {
+  async loadGame(
+    gameId: string,
+    signal?: AbortSignal,
+    options: { allowNotModified?: boolean } = {},
+  ): Promise<XiangqiGameSnapshot | null> {
     const headers = new Headers();
-    const etag = this.gameEtags.get(gameId);
+    const allowNotModified = options.allowNotModified === true;
+    if (!allowNotModified) this.gameEtags.delete(gameId);
+    const etag = allowNotModified ? this.gameEtags.get(gameId) : null;
     if (etag) headers.set("If-None-Match", etag);
 
     let response: Response;
@@ -253,7 +259,10 @@ export class XiangqiOnlineClient {
       if (error instanceof DOMException && error.name === "AbortError") throw error;
       throw new XiangqiApiError({ code: "network_error", message: "Mất kết nối với ván cờ. Đang thử lại…" });
     }
-    if (response.status === 304) return null;
+    if (response.status === 304) {
+      if (allowNotModified) return null;
+      throw new XiangqiApiError({ code: "invalid_response", message: "Máy chủ chưa gửi snapshot đầu tiên của ván cờ." });
+    }
 
     const payload = await readPayload(response);
     if (!response.ok) {
@@ -282,4 +291,21 @@ export class XiangqiOnlineClient {
 
 export function isXiangqiApiError(error: unknown): error is XiangqiApiError {
   return error instanceof XiangqiApiError;
+}
+
+export type XiangqiFailureKind = "session" | "retryable" | "permanent";
+
+const RETRYABLE_ERROR_CODES = new Set([
+  "network_error",
+  "request_failed",
+  "internal_error",
+  "stale_revision",
+  "command_conflict",
+]);
+
+export function classifyXiangqiFailure(error: unknown): XiangqiFailureKind {
+  if (!isXiangqiApiError(error)) return "retryable";
+  if (error.issue.code === "session_required") return "session";
+  if (error.status >= 500 || error.status === 408 || error.status === 429) return "retryable";
+  return RETRYABLE_ERROR_CODES.has(error.issue.code) ? "retryable" : "permanent";
 }
