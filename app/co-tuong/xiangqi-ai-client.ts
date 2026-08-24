@@ -1,0 +1,106 @@
+import { chooseComputerMove } from "../../lib/xiangqi/ai";
+import { legalMoves, toPublicState } from "../../lib/xiangqi/rules";
+import { sameCoord, type Difficulty, type Move, type PublicXiangqiState, type XiangqiState } from "../../lib/xiangqi/types";
+
+type ClientOptions = { signal?: AbortSignal; budgetMs?: number };
+type WorkerResponse = { move?: Move; error?: { name: string; message: string } };
+
+function asPublicState(state: XiangqiState | PublicXiangqiState): PublicXiangqiState {
+  return "concealedPieces" in state || "seed" in state ? toPublicState(state as XiangqiState) : state;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function sameMove(left: Move, right: Move): boolean {
+  return sameCoord(left.from, right.from) && sameCoord(left.to, right.to);
+}
+
+export function findLegalFallbackMove(state: PublicXiangqiState): Move | null {
+  return legalMoves(state)[0] ?? null;
+}
+
+function moveOrFallback(state: PublicXiangqiState, candidate?: Move): Move {
+  const moves = legalMoves(state);
+  if (candidate && moves.some((move) => sameMove(move, candidate))) return candidate;
+  const fallback = moves[0];
+  if (!fallback) throw new Error("No legal computer move is available");
+  return fallback;
+}
+
+export function requestComputerMove(
+  state: XiangqiState | PublicXiangqiState,
+  difficulty: Difficulty,
+  options: ClientOptions = {},
+): Promise<Move> {
+  const publicState = asPublicState(state);
+  if (options.signal?.aborted) {
+    return Promise.reject(new DOMException("Computer move cancelled", "AbortError"));
+  }
+
+  if (typeof Worker === "undefined") {
+    return chooseComputerMove(publicState, difficulty, options).catch((error: unknown) => {
+      if (isAbortError(error)) throw error;
+      return moveOrFallback(publicState);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./xiangqi-ai.worker.ts", import.meta.url), { type: "module" });
+    } catch (error) {
+      try {
+        resolve(moveOrFallback(publicState));
+      } catch {
+        reject(error);
+      }
+      return;
+    }
+    let settled = false;
+
+    function finish(callback: () => void): void {
+      if (settled) return;
+      settled = true;
+      options.signal?.removeEventListener("abort", abort);
+      worker.terminate();
+      callback();
+    }
+
+    function abort(): void {
+      finish(() => reject(new DOMException("Computer move cancelled", "AbortError")));
+    }
+
+    function resolveFallback(error?: unknown): void {
+      finish(() => {
+        try {
+          resolve(moveOrFallback(publicState));
+        } catch {
+          reject(error instanceof Error ? error : new Error("Computer worker failed"));
+        }
+      });
+    }
+
+    options.signal?.addEventListener("abort", abort, { once: true });
+    worker.onerror = () => resolveFallback(new Error("Computer worker failed"));
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      const response = event.data;
+      if (response.error) {
+        resolveFallback(new DOMException(response.error.message, response.error.name));
+        return;
+      }
+      try {
+        const move = moveOrFallback(publicState, response.move);
+        finish(() => resolve(move));
+      } catch (error) {
+        finish(() => reject(error));
+      }
+    };
+    try {
+      worker.postMessage({ state: publicState, difficulty, budgetMs: options.budgetMs });
+    } catch (error) {
+      resolveFallback(error);
+    }
+  });
+}
