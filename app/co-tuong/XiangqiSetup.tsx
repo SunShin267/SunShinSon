@@ -43,7 +43,7 @@ export function XiangqiSetup({ playerName, initialMode = "computer", notice, onS
       <div className="xiangqi-section-heading">
         <div>
           <p className="xiangqi-kicker">Chuẩn bị khai cuộc</p>
-          <h2 id="xiangqi-setup-title">Chọn ván cờ của {playerName || "bé"}</h2>
+          <h2 id="xiangqi-setup-title" tabIndex={-1}>Chọn ván cờ của {playerName || "bé"}</h2>
         </div>
         <span aria-hidden="true">🏮</span>
       </div>

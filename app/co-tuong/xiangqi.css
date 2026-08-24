@@ -1,3 +1,14 @@
+.xiangqi-page,
+.xiangqi-inline-login-page,
+.xiangqi-setup-confirm-dialog {
+  --xiangqi-ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --xiangqi-cjk-font: "PingFang TC", "PingFang SC", "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", "Hiragino Sans GB", system-ui, sans-serif;
+  font-family: var(--xiangqi-ui-font);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .xiangqi-page {
   --xiangqi-ink: #3e2b2a;
   --xiangqi-muted: #76605c;
@@ -11,6 +22,16 @@
   padding: 28px 0 58px;
   color: var(--xiangqi-ink);
 }
+
+.xiangqi-setup-confirm-dialog {
+  margin: auto;
+  color: #3e2b2a;
+}
+
+.xiangqi-setup-confirm-dialog::backdrop { background: rgba(36, 55, 46, .35); }
+.xiangqi-setup-confirm-dialog .game-dialog-danger { border: 1px solid #8f3028; background: #a83d31; color: #fff; }
+.xiangqi-setup-confirm-dialog button:focus-visible,
+.xiangqi-section-heading h2:focus-visible { outline: 4px solid #f0c84f; outline-offset: 3px; }
 
 .xiangqi-page button,
 .xiangqi-page input {
@@ -70,8 +91,9 @@
 .xiangqi-hero h1 {
   margin: 0;
   color: #4a2925;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--xiangqi-ui-font);
   font-size: clamp(35px, 5vw, 62px);
+  font-weight: 850;
   line-height: 1;
   letter-spacing: -2px;
 }
@@ -103,7 +125,7 @@
   border-radius: 50%;
   background: radial-gradient(circle, #fffce9, #ead29a);
   box-shadow: 0 12px 18px rgba(79, 43, 31, .18), inset 0 0 0 4px rgba(255,255,255,.55);
-  font-family: "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 58px;
   font-weight: 800;
 }
@@ -191,7 +213,7 @@
   background: radial-gradient(circle at 35% 30%, #fffdf0, #ecd09b);
   color: var(--xiangqi-red);
   box-shadow: 0 4px 8px rgba(75, 43, 29, .14);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 28px;
   font-weight: 900;
 }
@@ -256,7 +278,7 @@
   border: 2px solid currentColor;
   border-radius: 50%;
   background: #fff8df;
-  font-family: Georgia, serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 18px;
   font-weight: 900;
 }
@@ -424,7 +446,7 @@
 .xiangqi-board-lines rect { stroke-width: 4.2; }
 .xiangqi-board-lines text {
   fill: rgba(104, 48, 24, .8);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 29px;
   font-weight: 800;
   letter-spacing: 4px;
@@ -501,7 +523,7 @@
   border-radius: 50%;
   background: radial-gradient(circle at 32% 25%, #fffde8, #ead09d 70%, #c59151);
   box-shadow: 0 4px 5px rgba(65, 31, 18, .3), inset 0 0 0 2px rgba(255,255,255,.58);
-  font-family: "Noto Serif CJK SC", "Songti SC", Georgia, "Times New Roman", serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: clamp(20px, 4vw, 45px);
   font-weight: 900;
   line-height: 1;
@@ -598,7 +620,7 @@
   border: 2px solid currentColor;
   border-radius: 50%;
   background: #fff5d8;
-  font-family: Georgia, serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 22px;
   font-weight: 900;
 }
@@ -695,7 +717,7 @@
   background: radial-gradient(circle at 35% 28%, #fffdf0, #ead09a);
   color: #9e392e;
   box-shadow: 0 9px 18px rgba(91, 47, 28, .18);
-  font-family: Georgia, serif;
+  font-family: var(--xiangqi-cjk-font);
   font-size: 42px;
   font-weight: 900;
 }

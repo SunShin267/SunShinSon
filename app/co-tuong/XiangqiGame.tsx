@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { applyMove, createGame, getGameStatus, legalMoves, toPublicState } from "../../lib/xiangqi/rules";
 import {
@@ -112,6 +112,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   const [onlineError, setOnlineError] = useState("");
   const [loginName, setLoginName] = useState("");
   const [onlineGameActive, setOnlineGameActive] = useState(false);
+  const [setupConfirmOpen, setSetupConfirmOpen] = useState(false);
 
   const gameRef = useRef<XiangqiState | null>(null);
   const configRef = useRef<XiangqiConfig | null>(null);
@@ -121,6 +122,32 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   const revisionRef = useRef(0);
   const aiControllerRef = useRef<AbortController | null>(null);
   const revealTimerRef = useRef<number | null>(null);
+  const setupConfirmRef = useRef<HTMLDialogElement | null>(null);
+  const setupConfirmTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const focusSetupAfterExitRef = useRef(false);
+
+  useEffect(() => {
+    if (!setupConfirmOpen) return;
+
+    const dialog = setupConfirmRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    const focusTimer = window.setTimeout(() => {
+      dialog.querySelector<HTMLButtonElement>("button")?.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      if (dialog.open) dialog.close();
+    };
+  }, [setupConfirmOpen]);
+
+  useEffect(() => {
+    if (game || config || !focusSetupAfterExitRef.current) return;
+    focusSetupAfterExitRef.current = false;
+    const focusTimer = window.setTimeout(() => document.getElementById("xiangqi-setup-title")?.focus(), 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [config, game]);
 
   const ensureOnlineSession = useCallback(async (name: string, signal?: AbortSignal) => {
     const normalized = name.trim().replace(/\s+/gu, " ");
@@ -357,6 +384,8 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   function returnToSetup() {
     stopPendingWork();
     revisionRef.current += 1;
+    setSetupConfirmOpen(false);
+    setupConfirmTriggerRef.current = null;
     gameRef.current = null;
     configRef.current = null;
     setGame(null);
@@ -366,6 +395,52 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
     setRevealing(false);
     setSelectedSquare(null);
     setAnnouncement("Chọn kiểu chơi để bắt đầu một ván Cờ tướng.");
+  }
+
+  function requestReturnToSetup(event: MouseEvent<HTMLButtonElement>) {
+    setupConfirmTriggerRef.current = event.currentTarget;
+    settleClock();
+    aiControllerRef.current?.abort();
+    aiControllerRef.current = null;
+    runningSideRef.current = null;
+    lastClockMarkRef.current = null;
+    setRunningSide(null);
+    setSetupConfirmOpen(true);
+  }
+
+  function cancelReturnToSetup() {
+    const trigger = setupConfirmTriggerRef.current;
+    const current = gameRef.current;
+    setSetupConfirmOpen(false);
+    if (current && getGameStatus(current).kind === "active") beginTurn(current.turn);
+    window.setTimeout(() => trigger?.focus(), 0);
+  }
+
+  function confirmReturnToSetup() {
+    focusSetupAfterExitRef.current = true;
+    returnToSetup();
+  }
+
+  function handleSetupConfirmKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelReturnToSetup();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+    const firstButton = buttons[0];
+    const lastButton = buttons.at(-1);
+    if (!firstButton || !lastButton) return;
+
+    if (event.shiftKey && document.activeElement === firstButton) {
+      event.preventDefault();
+      lastButton.focus();
+    } else if (!event.shiftKey && document.activeElement === lastButton) {
+      event.preventDefault();
+      firstButton.focus();
+    }
   }
 
   function leaveOnlineFlow() {
@@ -386,7 +461,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   }
 
   useEffect(() => {
-    if (!game || !config || revealing || aiFailure || getGameStatus(game).kind !== "active" || game.turn === config.humanSide) return;
+    if (!game || !config || setupConfirmOpen || revealing || aiFailure || getGameStatus(game).kind !== "active" || game.turn === config.humanSide) return;
 
     const controller = new AbortController();
     const expectedRevision = revisionRef.current;
@@ -423,13 +498,13 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
       });
 
     return () => controller.abort();
-  }, [aiFailure, applyLocalMove, config, game, revealing, settleClock]);
+  }, [aiFailure, applyLocalMove, config, game, revealing, settleClock, setupConfirmOpen]);
 
   useEffect(() => {
-    if (!game || getGameStatus(game).kind !== "active") return;
+    if (!game || setupConfirmOpen || getGameStatus(game).kind !== "active") return;
     const interval = window.setInterval(() => settleClock(), 200);
     return () => window.clearInterval(interval);
-  }, [game, settleClock]);
+  }, [game, settleClock, setupConfirmOpen]);
 
   const status = useMemo(() => game ? getGameStatus(game) : null, [game]);
   const publicState = useMemo(() => game ? toPublicState(game) : null, [game]);
@@ -566,7 +641,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
                   <span>{config.variant === "blind" ? "Cờ úp" : "Cờ sáng"}</span>
                   <strong>{config.clockMinutes} phút · {{ easy: "Dễ", medium: "Vừa", hard: "Khó" }[config.difficulty]}</strong>
                 </div>
-                <button type="button" onClick={returnToSetup}>Đổi lựa chọn</button>
+                <button type="button" onClick={requestReturnToSetup}>Đổi lựa chọn</button>
               </div>
               {aiFailure ? (
                 <div className="xiangqi-ai-error" role="alert">
@@ -605,7 +680,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
               <div className="xiangqi-actions">
                 {inProgress ? <button type="button" className="xiangqi-danger-button" onClick={() => finishWithOutcome({ kind: "resignation", winner: otherSide(config.humanSide) }, `${humanName} đã đầu hàng. Máy Cờ Tướng thắng ván này.`)}>⚑ Đầu hàng</button> : null}
                 <button type="button" className="xiangqi-primary-button" onClick={() => startLocalGame(config)}>↻ Chơi lại</button>
-                <button type="button" className="xiangqi-secondary-button" onClick={returnToSetup}>⚙ Đổi thiết lập</button>
+                <button type="button" className="xiangqi-secondary-button" onClick={requestReturnToSetup}>⚙ Đổi thiết lập</button>
               </div>
 
               <section className="xiangqi-history" aria-labelledby="xiangqi-history-title">
@@ -621,7 +696,26 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
             </aside>
           </section>
         ) : null}
+
       </main>
+
+      {setupConfirmOpen ? (
+        <dialog
+          ref={setupConfirmRef}
+          className="game-dialog xiangqi-setup-confirm-dialog"
+          aria-labelledby="xiangqi-setup-confirm-title"
+          aria-describedby="xiangqi-setup-confirm-description"
+          onCancel={(event) => { event.preventDefault(); cancelReturnToSetup(); }}
+          onKeyDown={handleSetupConfirmKeyDown}
+        >
+          <h2 id="xiangqi-setup-confirm-title">Có chắc chắn muốn thoát ván?</h2>
+          <p id="xiangqi-setup-confirm-description">Bàn cờ và thời gian hiện tại sẽ bị xóa để bé thay đổi thiết lập.</p>
+          <div className="game-dialog-actions">
+            <button type="button" className="game-dialog-secondary" onClick={cancelReturnToSetup}>Ở lại chơi</button>
+            <button type="button" className="game-dialog-danger" onClick={confirmReturnToSetup}>Thoát và đổi thiết lập</button>
+          </div>
+        </dialog>
+      ) : null}
     </GameShell>
   );
 }
