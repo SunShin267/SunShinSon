@@ -4,6 +4,7 @@ import type { ImageHandlers } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import type { Env } from "./env";
 import { handleApiRequest } from "./questions-api";
+import { handleXiangqiApiRequest } from "./xiangqi-api";
 
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
@@ -19,6 +20,9 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    const xiangqiApiResponse = await handleXiangqiApiRequest(request, env);
+    if (xiangqiApiResponse) return xiangqiApiResponse;
 
     const apiResponse = await handleApiRequest(request, env, ctx);
     if (apiResponse) return apiResponse;

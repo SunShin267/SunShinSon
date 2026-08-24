@@ -8,6 +8,13 @@
       "when": 1786897371056,
       "tag": "0000_quiz-admin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787588578532,
+      "tag": "0001_xiangqi_online",
+      "breakpoints": true
     }
   ]
 }
