@@ -581,7 +581,7 @@ function participantSide(game: GameRow, sessionId: string): Side | null {
 }
 
 function gameEtag(revision: number): string {
-  return `"xiangqi-${revision}"`;
+  return `W/"xiangqi-${revision}"`;
 }
 
 function snapshot(game: GameRow, sessionId: string, now: number) {
@@ -630,7 +630,17 @@ async function finishPresenceStatements(env: Env, gameId: string, revision: numb
   ];
 }
 
-async function settleClock(env: Env, original: GameRow, now: number, attempts = 0): Promise<GameRow> {
+async function settleClock(
+  env: Env,
+  original: GameRow,
+  now: number,
+  persistProgress: boolean,
+  expectedRevision: number | null = null,
+  attempts = 0,
+): Promise<GameRow> {
+  if (persistProgress && expectedRevision !== null && original.revision !== expectedRevision) {
+    return settleClock(env, original, now, false);
+  }
   if (
     original.status !== "active"
     || original.active_side === null
@@ -643,6 +653,14 @@ async function settleClock(env: Env, original: GameRow, now: number, attempts = 
     : Math.max(0, original.black_clock_ms - elapsed);
 
   if (remaining > 0) {
+    if (!persistProgress) {
+      return {
+        ...original,
+        red_clock_ms: original.active_side === "red" ? remaining : original.red_clock_ms,
+        black_clock_ms: original.active_side === "black" ? remaining : original.black_clock_ms,
+        active_clock_started_at: now,
+      };
+    }
     const result = await env.DB.prepare(`
       UPDATE xiangqi_games
       SET red_clock_ms = ?, black_clock_ms = ?, active_clock_started_at = ?, updated_at = ?
@@ -708,20 +726,22 @@ async function settleClock(env: Env, original: GameRow, now: number, attempts = 
   }
   const latest = await fetchGame(env, original.id);
   if (!latest) throw new Error("Xiangqi game disappeared during clock update");
-  return settleClock(env, latest, Date.now(), attempts + 1);
+  return settleClock(env, latest, Date.now(), persistProgress, expectedRevision, attempts + 1);
 }
 
 async function participantGame(
   env: Env,
   gameId: string,
   sessionId: string,
+  persistClockProgress = false,
+  expectedRevision: number | null = null,
 ): Promise<GameRow | Response> {
   const game = await fetchGame(env, gameId);
   if (!game) return apiError(404, "game_not_found", "Không tìm thấy ván cờ.");
   if (!participantSide(game, sessionId)) {
     return apiError(403, "forbidden", "Bạn không phải người chơi của ván cờ này.");
   }
-  return settleClock(env, game, Date.now());
+  return settleClock(env, game, Date.now(), persistClockProgress, expectedRevision);
 }
 
 function gameResponse(game: GameRow, sessionId: string, status = 200): Response {
@@ -1260,7 +1280,7 @@ async function handleCommand(request: Request, env: Env, gameId: string): Promis
   if (session instanceof Response) return session;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const gameOrResponse = await participantGame(env, gameId, session.id);
+    const gameOrResponse = await participantGame(env, gameId, session.id, true, command.revision);
     if (gameOrResponse instanceof Response) return gameOrResponse;
     const game = gameOrResponse;
     if (game.revision !== command.revision) return staleGameResponse(env, gameId, session.id);

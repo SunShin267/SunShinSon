@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react";
-
-import { getGameStatus } from "../../lib/xiangqi/rules";
+import { memo, useMemo, useState } from "react";
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -19,6 +17,7 @@ type XiangqiBoardProps = {
   selectedSquare: Coord | null;
   legalTargets: readonly Coord[];
   onSquareClick: (coord: Coord) => void;
+  inCheck: boolean;
   disabled?: boolean;
 };
 
@@ -57,13 +56,12 @@ function visualCoords(side: Side): Coord[] {
   return result;
 }
 
-export function XiangqiBoard({ state, playerSide, selectedSquare, legalTargets, onSquareClick, disabled = false }: XiangqiBoardProps) {
+export const XiangqiBoard = memo(function XiangqiBoard({ state, playerSide, selectedSquare, legalTargets, onSquareClick, inCheck, disabled = false }: XiangqiBoardProps) {
   const ownGeneral: Coord = playerSide === "red" ? [4, 9] : [4, 0];
   const [focusCoord, setFocusCoord] = useState<Coord>(ownGeneral);
   const coords = useMemo(() => visualCoords(playerSide), [playerSide]);
   const lastMove = state.moves.at(-1) ?? null;
-  const status = getGameStatus(state);
-  const checkedGeneralKey = status.inCheck
+  const checkedGeneralKey = inCheck
     ? Object.entries(state.board).find(([, piece]) => piece.side === state.turn && piece.revealed && piece.role === "general")?.[0] ?? null
     : null;
 
@@ -152,4 +150,4 @@ export function XiangqiBoard({ state, playerSide, selectedSquare, legalTargets, 
       <p className="xiangqi-orientation-note"><span aria-hidden="true">↕</span> Phía quân {playerSide === "red" ? "Đỏ" : "Đen"} ở gần bé</p>
     </div>
   );
-}
+});

@@ -100,11 +100,12 @@ export function XiangqiOnlineGame({
   const applySnapshot = useCallback((next: XiangqiGameSnapshot) => {
     const current = snapshotRef.current;
     if (current?.id === next.id && current.revision > next.revision) return;
+    const boardChanged = current?.id !== next.id || current.revision !== next.revision;
     snapshotRef.current = next;
     setReceivedAt(Date.now());
     setSnapshot(next);
     setFatalError("");
-    setSelectedSquare(null);
+    if (boardChanged) setSelectedSquare(null);
     setConnection("connected");
     setConnectionMessage("Đã kết nối");
   }, []);
@@ -355,7 +356,7 @@ export function XiangqiOnlineGame({
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setClockNow(Date.now()), 250);
+    const interval = window.setInterval(() => setClockNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -378,7 +379,7 @@ export function XiangqiOnlineGame({
     return legalMoves(snapshot.state, selectedSquare).map((move) => move.to);
   }, [canMove, selectedSquare, snapshot]);
 
-  function chooseSquare(coord: Coord) {
+  const chooseSquare = useCallback((coord: Coord) => {
     const current = snapshotRef.current;
     if (!current || !canMove) return;
     const piece = current.state.board[coordKey(coord)];
@@ -406,7 +407,7 @@ export function XiangqiOnlineGame({
       return;
     }
     void sendCommand({ type: "move", move }, `Đã gửi nước ${coordLabel(move.from)} đến ${coordLabel(move.to)}.`);
-  }
+  }, [canMove, selectedSquare, sendCommand]);
 
   if (fatalError) {
     return (
@@ -474,7 +475,7 @@ export function XiangqiOnlineGame({
           <button type="button" onClick={onReturnToLobby}>Về sảnh</button>
         </div>
         <p className={`xiangqi-online-connection is-${connection}`} role="status" aria-live="polite"><span aria-hidden="true" />{connectionMessage || connectionLabel}</p>
-        <XiangqiBoard state={snapshot.state} playerSide={playerSide} selectedSquare={selectedSquare} legalTargets={legalTargets} disabled={!canMove} onSquareClick={chooseSquare} />
+        <XiangqiBoard state={snapshot.state} playerSide={playerSide} selectedSquare={selectedSquare} legalTargets={legalTargets} inCheck={snapshot.status.inCheck} disabled={!canMove} onSquareClick={chooseSquare} />
         <p className="xiangqi-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       </div>
 

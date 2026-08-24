@@ -431,13 +431,16 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
     return () => window.clearInterval(interval);
   }, [game, settleClock]);
 
-  const legalTargets = useMemo(() => {
-    if (!game || !config || !selectedSquare || game.turn !== config.humanSide || getGameStatus(game).kind !== "active") return [];
-    return legalMoves(game, selectedSquare).map((move) => move.to);
-  }, [config, game, selectedSquare]);
+  const status = useMemo(() => game ? getGameStatus(game) : null, [game]);
+  const publicState = useMemo(() => game ? toPublicState(game) : null, [game]);
 
-  function chooseSquare(coord: Coord) {
-    if (!game || !config || revealing || getGameStatus(game).kind !== "active" || game.turn !== config.humanSide) return;
+  const legalTargets = useMemo(() => {
+    if (!game || !config || !selectedSquare || game.turn !== config.humanSide || status?.kind !== "active") return [];
+    return legalMoves(game, selectedSquare).map((move) => move.to);
+  }, [config, game, selectedSquare, status?.kind]);
+
+  const chooseSquare = useCallback((coord: Coord) => {
+    if (!game || !config || revealing || status?.kind !== "active" || game.turn !== config.humanSide) return;
     const piece = game.board[coordKey(coord)];
 
     if (!selectedSquare) {
@@ -469,10 +472,8 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
       return;
     }
     applyLocalMove(move, "human");
-  }
+  }, [applyLocalMove, config, game, revealing, selectedSquare, status?.kind]);
 
-  const status = game ? getGameStatus(game) : null;
-  const publicState = game ? toPublicState(game) : null;
   const totalMs = config ? config.clockMinutes * 60_000 : 10 * 60_000;
   const humanName = playerName || "Bé";
   const playerForSide = (side: Side) => config && side === config.humanSide ? humanName : "Máy Cờ Tướng";
@@ -578,6 +579,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
                 playerSide={config.humanSide}
                 selectedSquare={selectedSquare}
                 legalTargets={legalTargets}
+                inCheck={status.inCheck}
                 disabled={!inProgress || thinking || revealing || game.turn !== config.humanSide}
                 onSquareClick={chooseSquare}
               />
