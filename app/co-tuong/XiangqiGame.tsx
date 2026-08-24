@@ -198,7 +198,7 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
       runningSideRef.current = null;
       lastClockMarkRef.current = null;
       setRunningSide(null);
-      setAnnouncement(`${actorName} vừa đi ${coordLabel(legal.from)} đến ${coordLabel(legal.to)}.${revealText} ${terminalMessage(status, currentConfig, playerName)}`.replace(/\s+/g, " ").trim());
+      setAnnouncement(`${actorName} vừa đi ${coordLabel(legal.from)} đến ${coordLabel(legal.to)}.${revealText}${fallbackText} ${terminalMessage(status, currentConfig, playerName)}`.replace(/\s+/g, " ").trim());
       return;
     }
 
@@ -279,12 +279,12 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
     aiControllerRef.current = controller;
 
     requestComputerMove(game, config.difficulty, { signal: controller.signal })
-      .then((move) => {
+      .then(({ move, fallbackUsed }) => {
         const current = gameRef.current;
         if (controller.signal.aborted || !current || revisionRef.current !== expectedRevision || current.turn !== game.turn) return;
         const stillLegal = legalMoves(current, move.from).some((candidate) => sameCoord(candidate.to, move.to));
         if (!stillLegal) throw new Error("Nước máy chọn đã cũ");
-        applyLocalMove(move, "computer");
+        applyLocalMove(move, "computer", fallbackUsed);
       })
       .catch((error: unknown) => {
         if (isAbortError(error) || controller.signal.aborted) return;

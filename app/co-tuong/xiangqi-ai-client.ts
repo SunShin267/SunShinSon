@@ -5,6 +5,11 @@ import { sameCoord, type Difficulty, type Move, type PublicXiangqiState, type Xi
 type ClientOptions = { signal?: AbortSignal; budgetMs?: number };
 type WorkerResponse = { move?: Move; error?: { name: string; message: string } };
 
+export type ComputerMoveResult = {
+  move: Move;
+  fallbackUsed: boolean;
+};
+
 function asPublicState(state: XiangqiState | PublicXiangqiState): PublicXiangqiState {
   return state.visibility === "private" ? toPublicState(state) : state;
 }
@@ -21,29 +26,34 @@ export function findLegalFallbackMove(state: PublicXiangqiState): Move | null {
   return legalMoves(state)[0] ?? null;
 }
 
-function moveOrFallback(state: PublicXiangqiState, candidate?: Move): Move {
+function moveOrFallback(state: PublicXiangqiState, candidate?: Move): ComputerMoveResult {
   const moves = legalMoves(state);
-  if (candidate && moves.some((move) => sameMove(move, candidate))) return candidate;
+  if (candidate && moves.some((move) => sameMove(move, candidate))) {
+    return { move: candidate, fallbackUsed: false };
+  }
   const fallback = moves[0];
   if (!fallback) throw new Error("No legal computer move is available");
-  return fallback;
+  return { move: fallback, fallbackUsed: true };
 }
 
 export function requestComputerMove(
   state: XiangqiState | PublicXiangqiState,
   difficulty: Difficulty,
   options: ClientOptions = {},
-): Promise<Move> {
+): Promise<ComputerMoveResult> {
   const publicState = asPublicState(state);
   if (options.signal?.aborted) {
     return Promise.reject(new DOMException("Computer move cancelled", "AbortError"));
   }
 
   if (typeof Worker === "undefined") {
-    return chooseComputerMove(publicState, difficulty, options).catch((error: unknown) => {
-      if (isAbortError(error)) throw error;
-      return moveOrFallback(publicState);
-    });
+    return chooseComputerMove(publicState, difficulty, options).then(
+      (move) => moveOrFallback(publicState, move),
+      (error: unknown) => {
+        if (isAbortError(error)) throw error;
+        return moveOrFallback(publicState);
+      },
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -96,8 +106,8 @@ export function requestComputerMove(
         return;
       }
       try {
-        const move = moveOrFallback(publicState, typedResponse.move);
-        finish(() => resolve(move));
+        const result = moveOrFallback(publicState, typedResponse.move);
+        finish(() => resolve(result));
       } catch (error) {
         finish(() => reject(error));
       }

@@ -81,7 +81,7 @@ export function XiangqiBoard({ state, playerSide, selectedSquare, legalTargets, 
 
   return (
     <div className={`xiangqi-board-frame xiangqi-board-frame--${playerSide}`}>
-      <div className="xiangqi-board" role="grid" aria-label={`Bàn Cờ tướng, nhìn từ phía quân ${playerSide === "red" ? "Đỏ" : "Đen"}`}>
+      <div className="xiangqi-board" role="group" aria-label={`Bàn Cờ tướng, nhìn từ phía quân ${playerSide === "red" ? "Đỏ" : "Đen"}`}>
         <svg className="xiangqi-board-lines" viewBox="0 0 900 1000" aria-hidden="true" preserveAspectRatio="none">
           <rect x="50" y="50" width="800" height="900" rx="4" />
           {Array.from({ length: 10 }, (_, index) => <line key={`h-${index}`} x1="50" y1={50 + index * 100} x2="850" y2={50 + index * 100} />)}
@@ -120,11 +120,10 @@ export function XiangqiBoard({ state, playerSide, selectedSquare, legalTargets, 
               <button
                 key={key}
                 type="button"
-                role="gridcell"
                 data-xiangqi-square={key}
                 tabIndex={sameCoord(focusCoord, coord) ? 0 : -1}
                 aria-label={details}
-                aria-selected={isSelected}
+                aria-pressed={isSelected}
                 aria-disabled={disabled}
                 className={`xiangqi-square${isSelected ? " is-selected" : ""}${isLegal ? " is-legal" : ""}${isLegal && piece ? " is-capture" : ""}${isLast ? " is-last" : ""}${isChecked ? " is-check" : ""}${isJustRevealed ? " is-just-revealed" : ""}`}
                 onClick={() => { setFocusCoord(coord); if (!disabled) onSquareClick(coord); }}
