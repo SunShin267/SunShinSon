@@ -107,7 +107,7 @@ export function positionKey(state: Pick<ReadableState, "variant" | "board" | "tu
       square,
       piece.side,
       piece.revealed ? piece.role : "hidden",
-      piece.coverRole ?? "none",
+      piece.revealed ? "none" : (piece.coverRole ?? "none"),
       piece.revealed ? "1" : "0",
     ].join(":"));
   return `${state.variant}|${state.turn}|${pieces.join("|")}`;
@@ -144,6 +144,7 @@ export function createGame(variant: XiangqiVariant, seed: string | number): Xian
 
   const state: XiangqiState = {
     version: 1,
+    visibility: "private",
     variant,
     seed: normalizedSeed,
     board,
@@ -374,16 +375,19 @@ export function applyMove(state: XiangqiState, move: Move): XiangqiState {
 
 export function getGameStatus(state: ReadableState): GameStatus {
   const inCheck = isInCheck(state, state.turn);
-  if (state.outcome) return { ...state.outcome, inCheck };
   if ((state.positionCounts[positionKey(state)] ?? 0) >= 3) {
     return { kind: "repetition", winner: null, inCheck };
   }
-  if (legalMoves(state).length > 0) return { kind: "active", winner: null, inCheck };
-  return {
-    kind: inCheck ? "checkmate" : "no-legal-move",
-    winner: otherSide(state.turn),
-    inCheck,
-  };
+  const boardMoves = legalMoves(state.outcome ? { ...state, outcome: null } : state);
+  if (boardMoves.length === 0) {
+    return {
+      kind: inCheck ? "checkmate" : "no-legal-move",
+      winner: otherSide(state.turn),
+      inCheck,
+    };
+  }
+  if (state.outcome) return { ...state.outcome, inCheck };
+  return { kind: "active", winner: null, inCheck };
 }
 
 export function toPublicState(state: XiangqiState): PublicXiangqiState {
@@ -395,6 +399,7 @@ export function toPublicState(state: XiangqiState): PublicXiangqiState {
   }
   return {
     version: 1,
+    visibility: "public",
     variant: state.variant,
     board,
     turn: state.turn,
@@ -504,7 +509,8 @@ export function hydrateState(value: unknown): XiangqiState {
       throw new Error("Invalid serialized Xiangqi state");
     }
   }
-  if (!isRecord(parsed) || parsed.version !== 1 || !isVariant(parsed.variant) || typeof parsed.seed !== "string") {
+  if (!isRecord(parsed) || parsed.version !== 1 || parsed.visibility !== "private"
+      || !isVariant(parsed.variant) || typeof parsed.seed !== "string") {
     throw new Error("Invalid Xiangqi state header");
   }
   if (!isSide(parsed.turn) || !isRecord(parsed.board) || !Array.isArray(parsed.moves)
@@ -547,6 +553,7 @@ export function hydrateState(value: unknown): XiangqiState {
   }
   const state: XiangqiState = {
     version: 1,
+    visibility: "private",
     variant: parsed.variant,
     seed: parsed.seed,
     board,
@@ -572,6 +579,9 @@ export function hydrateState(value: unknown): XiangqiState {
       || !sameStringRecord(state.concealedPieces, replayed.concealedPieces)
       || !sameStringRecord(state.positionCounts, replayed.positionCounts)) {
     throw new Error("Xiangqi state does not match its move history");
+  }
+  if (state.outcome && getGameStatus(replayed).kind !== "active") {
+    throw new Error("Stored Xiangqi outcome contradicts the terminal board");
   }
   return { ...replayed, outcome: state.outcome };
 }

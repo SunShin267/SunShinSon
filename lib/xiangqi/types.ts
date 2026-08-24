@@ -48,12 +48,17 @@ type SharedXiangqiState = {
 
 /** Authoritative, serializable state. Never send this shape directly to a blind-game client. */
 export type XiangqiState = SharedXiangqiState & {
+  visibility: "private";
   seed: string;
   concealedPieces: Readonly<Record<string, PieceRole>>;
 };
 
 /** Safe client/AI state. It intentionally omits both the concealed mapping and its seed. */
-export type PublicXiangqiState = SharedXiangqiState;
+export type PublicXiangqiState = SharedXiangqiState & {
+  visibility: "public";
+  seed?: never;
+  concealedPieces?: never;
+};
 
 export type GameStatus =
   | { kind: "active"; winner: null; inCheck: boolean }

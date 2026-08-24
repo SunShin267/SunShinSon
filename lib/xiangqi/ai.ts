@@ -52,6 +52,24 @@ function now(): number {
   return globalThis.performance?.now() ?? Date.now();
 }
 
+function sanitizePublicInput(state: PublicXiangqiState): PublicXiangqiState {
+  if (!state || state.visibility !== "public") throw new TypeError("Xiangqi AI requires public state");
+  const board: Record<string, Piece> = {};
+  for (const [key, piece] of Object.entries(state.board)) {
+    board[key] = piece.revealed ? { ...piece } : { ...piece, role: null };
+  }
+  return {
+    version: 1,
+    visibility: "public",
+    variant: state.variant,
+    board,
+    turn: state.turn,
+    moves: state.moves.map((move) => ({ ...move, from: [...move.from], to: [...move.to] })),
+    positionCounts: { ...state.positionCounts },
+    outcome: state.outcome ? { ...state.outcome } : null,
+  };
+}
+
 function assertActive(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("Computer move cancelled", "AbortError");
 }
@@ -282,6 +300,7 @@ export async function chooseComputerMove(
   options: AiOptions = {},
 ): Promise<Move> {
   if (!(difficulty in SEARCH_LIMITS)) throw new Error("Unknown Xiangqi AI difficulty");
+  state = sanitizePublicInput(state);
   assertActive(options.signal);
   await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0));
   assertActive(options.signal);

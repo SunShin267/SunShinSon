@@ -6,7 +6,7 @@ type ClientOptions = { signal?: AbortSignal; budgetMs?: number };
 type WorkerResponse = { move?: Move; error?: { name: string; message: string } };
 
 function asPublicState(state: XiangqiState | PublicXiangqiState): PublicXiangqiState {
-  return "concealedPieces" in state || "seed" in state ? toPublicState(state as XiangqiState) : state;
+  return state.visibility === "private" ? toPublicState(state) : state;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -84,14 +84,19 @@ export function requestComputerMove(
 
     options.signal?.addEventListener("abort", abort, { once: true });
     worker.onerror = () => resolveFallback(new Error("Computer worker failed"));
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    worker.onmessage = (event: MessageEvent<unknown>) => {
       const response = event.data;
-      if (response.error) {
-        resolveFallback(new DOMException(response.error.message, response.error.name));
+      if (!response || typeof response !== "object") {
+        resolveFallback(new TypeError("Computer worker returned an invalid response"));
+        return;
+      }
+      const typedResponse = response as WorkerResponse;
+      if (typedResponse.error) {
+        resolveFallback(new DOMException(typedResponse.error.message, typedResponse.error.name));
         return;
       }
       try {
-        const move = moveOrFallback(publicState, response.move);
+        const move = moveOrFallback(publicState, typedResponse.move);
         finish(() => resolve(move));
       } catch (error) {
         finish(() => reject(error));
