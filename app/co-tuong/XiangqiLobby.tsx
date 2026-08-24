@@ -91,6 +91,24 @@ export function XiangqiLobby({
     return next;
   }, [client, enterGame, inviteCode]);
 
+  const waitingInvite = lobby?.waitingInvite ?? null;
+  const acceptInviteAfterClearingWait = useCallback(async (invite: XiangqiInvite) => {
+    if (waitingInvite && waitingInvite.id !== invite.id) {
+      try {
+        await client.cancelInvite(waitingInvite.id);
+      } catch (error) {
+        // The lobby can be a few seconds behind the server. If that old invite has
+        // already expired or changed state, let the authoritative accept request
+        // determine whether this new room is still available.
+        if (
+          !isXiangqiApiError(error)
+          || !["invite_not_found", "invite_expired", "invite_unavailable"].includes(error.issue.code)
+        ) throw error;
+      }
+    }
+    return client.acceptInvite(invite.id);
+  }, [client, waitingInvite]);
+
   useEffect(() => {
     let active = true;
     let timer: number | null = null;
@@ -151,9 +169,11 @@ export function XiangqiLobby({
     acceptingRoomRef.current = room.id;
     setBusyAction(`accept-${room.id}`);
     setRoomJoinError("");
-    setNotice("Đang nhận lời mời và xếp màu quân…");
+    setNotice(waitingInvite && waitingInvite.id !== room.id
+      ? "Đang hủy lời mời đang chờ để vào phòng…"
+      : "Đang nhận lời mời và xếp màu quân…");
     try {
-      const game = await client.acceptInvite(room.id);
+      const game = await acceptInviteAfterClearingWait(room);
       enterGame(game.id);
     } catch (error) {
       if (classifyXiangqiFailure(error) === "session") {
@@ -165,7 +185,7 @@ export function XiangqiLobby({
       acceptingRoomRef.current = null;
       setBusyAction(null);
     }
-  }, [client, enterGame, onSessionRequired]);
+  }, [acceptInviteAfterClearingWait, enterGame, onSessionRequired, waitingInvite]);
 
   useEffect(() => {
     if (!inviteCode || !lobby || lobby.activeGame) return;
@@ -185,7 +205,6 @@ export function XiangqiLobby({
   }, [lobby?.players]);
 
   const roomProblem = inviteCode && lobby ? roomMessage(lobby.room, lobby.serverNow) : null;
-  const waitingInvite = lobby?.waitingInvite ?? null;
   const ownRoomLink = waitingInvite?.kind === "link" && waitingInvite.roomCode
     ? internalPath(`/co-tuong/phong/${waitingInvite.roomCode}`)
     : "";
@@ -301,11 +320,12 @@ export function XiangqiLobby({
 
             <section className="xiangqi-received-invites" aria-labelledby="xiangqi-received-title">
               <h3 id="xiangqi-received-title">Lời mời nhận được</h3>
+              {waitingInvite ? <p>Nhận lời mời mới sẽ hủy phòng hoặc lời mời đang chờ của bé.</p> : null}
               {lobby?.invitations.length ? lobby.invitations.map((invite) => (
                 <article key={invite.id}>
                   <div><strong>{invite.from.name} mời bé chơi</strong><p>{inviteDescription(invite)}</p></div>
                   <div className="xiangqi-inline-actions">
-                    <button type="button" className="xiangqi-primary-button" disabled={busyAction === `accept-${invite.id}`} onClick={() => runAction(`accept-${invite.id}`, async () => enterGame((await client.acceptInvite(invite.id)).id), "Đang vào ván…", false)}>Nhận lời</button>
+                    <button type="button" className="xiangqi-primary-button" disabled={busyAction === `accept-${invite.id}`} onClick={() => runAction(`accept-${invite.id}`, async () => enterGame((await acceptInviteAfterClearingWait(invite)).id), waitingInvite ? "Đã hủy lời mời đang chờ và đang vào ván…" : "Đang vào ván…", false)}>{waitingInvite ? "Nhận lời · hủy chờ" : "Nhận lời"}</button>
                     <button type="button" className="xiangqi-secondary-button" disabled={busyAction === `decline-${invite.id}`} onClick={() => runAction(`decline-${invite.id}`, () => client.declineInvite(invite.id), "Đã từ chối lời mời.")}>Từ chối</button>
                   </div>
                 </article>
