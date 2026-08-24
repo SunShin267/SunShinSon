@@ -16,17 +16,22 @@ import {
   type XiangqiState,
 } from "../../lib/xiangqi/types";
 import { GameShell } from "../components/GameShell";
-import { readChildName } from "../lib/child-session";
+import { readChildName, saveChildName } from "../lib/child-session";
+import { navigateInternal } from "../lib/navigation";
 import { XiangqiBoard } from "./XiangqiBoard";
 import { XiangqiClock } from "./XiangqiClock";
+import { XiangqiLobby } from "./XiangqiLobby";
+import { XiangqiOnlineGame } from "./XiangqiOnlineGame";
 import { XiangqiSetup, type XiangqiConfig } from "./XiangqiSetup";
 import { findLegalFallbackMove, requestComputerMove } from "./xiangqi-ai-client";
+import { isXiangqiApiError, XiangqiOnlineClient } from "./xiangqi-online-client";
 
 type XiangqiGameProps = {
   inviteCode?: string;
 };
 
 type ClockValues = Record<Side, number>;
+type OnlinePhase = "idle" | "checking" | "name" | "connecting" | "ready" | "error";
 
 const ROLE_LABELS: Record<PieceRole, string> = {
   general: "Tướng",
@@ -84,6 +89,7 @@ function turnMessage(state: XiangqiState, config: XiangqiConfig, playerName: str
 }
 
 export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
+  const onlineClient = useMemo(() => new XiangqiOnlineClient(), []);
   const [playerName, setPlayerName] = useState("Bé");
   const [config, setConfig] = useState<XiangqiConfig | null>(null);
   const [game, setGame] = useState<XiangqiState | null>(null);
@@ -94,6 +100,18 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   const [revealing, setRevealing] = useState(false);
   const [runningSide, setRunningSide] = useState<Side | null>(null);
   const [setupNotice, setSetupNotice] = useState("");
+  const [onlineConfig, setOnlineConfig] = useState<XiangqiConfig | null>(inviteCode ? {
+    variant: "bright",
+    mode: "online",
+    humanSide: "red",
+    difficulty: "medium",
+    clockMinutes: 10,
+  } : null);
+  const [onlinePhase, setOnlinePhase] = useState<OnlinePhase>(inviteCode ? "checking" : "idle");
+  const [onlineGameId, setOnlineGameId] = useState("");
+  const [onlineError, setOnlineError] = useState("");
+  const [loginName, setLoginName] = useState("");
+  const [onlineGameActive, setOnlineGameActive] = useState(false);
 
   const gameRef = useRef<XiangqiState | null>(null);
   const configRef = useRef<XiangqiConfig | null>(null);
@@ -104,10 +122,71 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
   const aiControllerRef = useRef<AbortController | null>(null);
   const revealTimerRef = useRef<number | null>(null);
 
+  const ensureOnlineSession = useCallback(async (name: string, signal?: AbortSignal) => {
+    const normalized = name.trim().replace(/\s+/gu, " ");
+    if (!normalized) {
+      setOnlinePhase("name");
+      setOnlineError("Bé hãy nhập tên để vào kỳ đài nhé.");
+      return false;
+    }
+    setOnlinePhase("connecting");
+    setOnlineError("");
+    try {
+      const session = await onlineClient.ensureSession(normalized, signal);
+      if (!saveChildName(session.player.name)) {
+        setOnlineError("Trình duyệt chưa lưu được tên. Bé hãy cho phép lưu dữ liệu trang rồi thử lại.");
+        setOnlinePhase("error");
+        return false;
+      }
+      setPlayerName(session.player.name);
+      setLoginName(session.player.name);
+      setOnlinePhase("ready");
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return false;
+      setOnlineError(isXiangqiApiError(error) ? error.issue.message : "Chưa thể vào kỳ đài online. Vui lòng thử lại.");
+      setOnlinePhase(inviteCode && !readChildName() ? "name" : "error");
+      return false;
+    }
+  }, [inviteCode, onlineClient]);
+
   useEffect(() => {
-    const timer = window.setTimeout(() => setPlayerName(readChildName() || "Bé"), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+    const savedName = readChildName();
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setPlayerName(savedName || "Bé");
+      setLoginName(savedName);
+      if (!inviteCode) return;
+      if (savedName) {
+        void ensureOnlineSession(savedName, controller.signal);
+      } else {
+        onlineClient.loadLobby(inviteCode, controller.signal)
+          .then((lobby) => {
+            if (!saveChildName(lobby.player.name)) {
+              setOnlineError("Trình duyệt chưa lưu được tên. Bé hãy cho phép lưu dữ liệu trang rồi thử lại.");
+              setOnlinePhase("error");
+              return;
+            }
+            setPlayerName(lobby.player.name);
+            setLoginName(lobby.player.name);
+            setOnlinePhase("ready");
+          })
+          .catch((error: unknown) => {
+            if (error instanceof DOMException && error.name === "AbortError") return;
+            if (isXiangqiApiError(error) && error.issue.code === "session_required") {
+              setOnlinePhase("name");
+              return;
+            }
+            setOnlineError(isXiangqiApiError(error) ? error.issue.message : "Chưa thể kiểm tra phòng mời. Vui lòng thử lại.");
+            setOnlinePhase("error");
+          });
+      }
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [ensureOnlineSession, inviteCode, onlineClient]);
 
   const stopPendingWork = useCallback(() => {
     aiControllerRef.current?.abort();
@@ -248,9 +327,9 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
 
   function handleSetup(configChoice: XiangqiConfig) {
     if (configChoice.mode === "online") {
-      setSetupNotice(inviteCode
-        ? `Mã mời ${inviteCode} đã được giữ lại. Sảnh online sẽ tiếp tục kết nối ở bước giao diện online.`
-        : "Lựa chọn online đã sẵn sàng. Sảnh mời bạn sẽ được nối vào màn hình này ở bước tiếp theo.");
+      setOnlineConfig(configChoice);
+      setSetupNotice("");
+      void ensureOnlineSession(playerName);
       return;
     }
     startLocalGame(configChoice);
@@ -268,6 +347,23 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
     setRevealing(false);
     setSelectedSquare(null);
     setAnnouncement("Chọn kiểu chơi để bắt đầu một ván Cờ tướng.");
+  }
+
+  function leaveOnlineFlow() {
+    setOnlineGameId("");
+    setOnlineGameActive(false);
+    if (inviteCode) {
+      navigateInternal("/co-tuong");
+      return;
+    }
+    setOnlineConfig(null);
+    setOnlinePhase("idle");
+  }
+
+  function returnToOnlineLobby() {
+    setOnlineGameId("");
+    setOnlineGameActive(false);
+    if (inviteCode) navigateInternal("/co-tuong");
   }
 
   useEffect(() => {
@@ -373,8 +469,42 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
     </div>
   );
 
+  if (inviteCode && onlinePhase !== "ready") {
+    const needsName = onlinePhase === "name";
+    return (
+      <main className="xiangqi-inline-login-page">
+        <section className="xiangqi-inline-login-card" aria-labelledby="xiangqi-inline-login-title">
+          <div className="xiangqi-inline-login-emblem" aria-hidden="true">帥</div>
+          <p className="xiangqi-kicker">Phòng mời {inviteCode.toUpperCase()}</p>
+          <h1 id="xiangqi-inline-login-title">{needsName ? "Bé tên là gì?" : onlinePhase === "error" ? "Chưa kết nối được" : "Đang mở kỳ đài…"}</h1>
+          {needsName ? (
+            <>
+              <p>Chỉ cần một cái tên, không cần tài khoản hay mật khẩu. Bé sẽ vào đúng phòng này sau khi kết nối.</p>
+              <form onSubmit={(event) => { event.preventDefault(); void ensureOnlineSession(loginName); }}>
+                <label htmlFor="xiangqi-online-name">Tên hiển thị</label>
+                <div className="xiangqi-name-input"><span aria-hidden="true">☺</span><input id="xiangqi-online-name" name="name" value={loginName} maxLength={30} autoComplete="nickname" autoFocus onChange={(event) => setLoginName(event.target.value)} placeholder="Ví dụ: Mít" required /></div>
+                {onlineError ? <p className="xiangqi-inline-login-error" role="alert">{onlineError}</p> : null}
+                <button type="submit" className="xiangqi-primary-button" disabled={!loginName.trim()}>Vào phòng Cờ tướng <span aria-hidden="true">→</span></button>
+              </form>
+            </>
+          ) : onlinePhase === "error" ? (
+            <>
+              <p role="alert">{onlineError}</p>
+              <div className="xiangqi-inline-actions">
+                <button type="button" className="xiangqi-primary-button" onClick={() => loginName ? void ensureOnlineSession(loginName) : window.location.reload()}>Thử kết nối lại</button>
+                <button type="button" className="xiangqi-secondary-button" onClick={() => navigateInternal("/co-tuong")}>Về trang Cờ tướng</button>
+              </div>
+            </>
+          ) : (
+            <p role="status" aria-live="polite">{onlineError || "Đang kiểm tra phiên và giữ nguyên mã phòng cho bé…"}</p>
+          )}
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <GameShell helpContent={helpContent} isGameInProgress={inProgress} onLeaveGame={stopPendingWork}>
+    <GameShell helpContent={helpContent} isGameInProgress={Boolean(inProgress || onlineGameActive)} onLeaveGame={stopPendingWork}>
       <main className="xiangqi-page">
         <section className="xiangqi-hero" aria-labelledby="xiangqi-title">
           <div>
@@ -385,7 +515,35 @@ export function XiangqiGame({ inviteCode }: XiangqiGameProps) {
           <div className="xiangqi-hero-emblem" aria-hidden="true"><span>帥</span><span>將</span></div>
         </section>
 
-        {!game || !config ? (
+        {onlineConfig ? (
+          onlinePhase === "ready" ? (
+            onlineGameId ? (
+              <XiangqiOnlineGame
+                client={onlineClient}
+                gameId={onlineGameId}
+                inviteCode={inviteCode}
+                onActiveChange={setOnlineGameActive}
+                onReturnToLobby={returnToOnlineLobby}
+              />
+            ) : (
+              <XiangqiLobby
+                client={onlineClient}
+                variant={onlineConfig.variant}
+                clockMinutes={onlineConfig.clockMinutes}
+                inviteCode={inviteCode}
+                onEnterGame={setOnlineGameId}
+                onBack={leaveOnlineFlow}
+              />
+            )
+          ) : (
+            <section className="xiangqi-card xiangqi-room-joining" aria-live="polite">
+              <span aria-hidden="true">🌐</span>
+              <h2>{onlinePhase === "error" ? "Chưa vào được sảnh" : "Đang kết nối kỳ đài online"}</h2>
+              <p>{onlineError || "Đang tạo phiên an toàn từ tên của bé…"}</p>
+              {onlinePhase === "error" ? <div className="xiangqi-inline-actions"><button type="button" className="xiangqi-primary-button" onClick={() => void ensureOnlineSession(playerName)}>Thử lại</button><button type="button" className="xiangqi-secondary-button" onClick={leaveOnlineFlow}>Đổi lựa chọn</button></div> : null}
+            </section>
+          )
+        ) : !game || !config ? (
           <XiangqiSetup playerName={humanName} initialMode={inviteCode ? "online" : "computer"} notice={setupNotice} onStart={handleSetup} />
         ) : publicState && status ? (
           <section className="xiangqi-game-layout" aria-label="Ván Cờ tướng với máy">
