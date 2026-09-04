@@ -8,9 +8,21 @@ test("uses Da Nang as the fixed fallback location", () => {
 });
 
 test("maps Open-Meteo weather codes to child-friendly Vietnamese", () => {
-  assert.deepEqual(describeWeather(0, true), { icon: "☀️", label: "Trời quang" });
-  assert.deepEqual(describeWeather(61, true), { icon: "🌧️", label: "Có mưa" });
-  assert.deepEqual(describeWeather(95, false), { icon: "⛈️", label: "Có giông" });
+  assert.deepEqual(describeWeather(0, true), {
+    icon: "☀️",
+    label: "Trời quang",
+    message: "Trời hôm nay đẹp quá, bé hãy cùng vui học và khám phá nhé!",
+  });
+  assert.deepEqual(describeWeather(61, true), {
+    icon: "🌧️",
+    label: "Có mưa",
+    message: "Trời đang mưa, mình cùng khám phá những trò vui trong nhà nhé!",
+  });
+  assert.deepEqual(describeWeather(95, false), {
+    icon: "⛈️",
+    label: "Có giông",
+    message: "Ngoài trời có giông, bé ở nơi an toàn và cùng SunShinSon vui học nhé!",
+  });
 });
 
 test("formats current weather with temperature and location label", async () => {
@@ -25,6 +37,7 @@ test("formats current weather with temperature and location label", async () => 
       icon: "🌤️",
       title: "Có mây",
       detail: "28°C · Đà Nẵng",
+      message: "Mây đang dạo chơi, bé cùng SunShinSon khám phá điều hay nhé!",
     });
   } finally {
     globalThis.fetch = originalFetch;

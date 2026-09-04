@@ -8,12 +8,14 @@ const loadingWeather: WeatherView = {
   icon: "🌤️",
   title: "Đang xem thời tiết",
   detail: "Đang tìm vị trí của bé…",
+  message: "SunShinSon đang nhìn ra ngoài trời một chút nhé!",
 };
 
 const unavailableWeather: WeatherView = {
   icon: "☀️",
   title: "Thời tiết Đà Nẵng",
   detail: "Chưa thể cập nhật lúc này",
+  message: "Dù thời tiết thế nào, mình vẫn có thật nhiều điều vui để khám phá!",
 };
 
 function locateUser(): Promise<GeolocationPosition> {
@@ -67,9 +69,13 @@ export function LocalWeather() {
   }, []);
 
   return (
-    <div className="weather-badge" aria-live="polite" aria-label={`${weather.title}, ${weather.detail}`}>
+    <div className="weather-badge" aria-live="polite" aria-label={`${weather.title}, ${weather.detail}. ${weather.message}`}>
       <span aria-hidden="true">{weather.icon}</span>
-      <div><strong>{weather.title}</strong><small>{weather.detail}</small></div>
+      <div>
+        <strong>{weather.title}</strong>
+        <small>{weather.detail}</small>
+        <p className="weather-message">{weather.message}</p>
+      </div>
     </div>
   );
 }
