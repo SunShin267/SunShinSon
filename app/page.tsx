@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { AppHeader } from "./components/AppHeader";
+import { LocalWeather } from "./components/LocalWeather";
 import { SunLogo } from "./components/SunLogo";
 import { clearChildName, readChildName, saveChildName } from "./lib/child-session";
 import { navigateInternal } from "./lib/navigation";
@@ -187,10 +188,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
               Chọn một hoạt động bé thích{" "}
               <span className="welcome-followup">và cùng SunShinSon khám phá nhé.</span>
             </p>
-            <div className="weather-badge" aria-label="Một ngày thật vui">
-              <span>☀️</span>
-              <div><strong>Ngày thật vui</strong><small>Sẵn sàng khám phá!</small></div>
-            </div>
+            <LocalWeather />
           </div>
         </section>
 
