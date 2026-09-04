@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 const basePath = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
-const siteUrl = process.env.SITE_URL?.trim() || `https://sunshin267.github.io${basePath || "/SunShinSon"}`;
+const siteUrl = process.env.SITE_URL?.trim() || (basePath ? `https://sunshin267.github.io${basePath}` : "https://sunshinson.bouncy-shark-0433.chatgpt.site");
 const metadataBase = new URL(`${siteUrl.replace(/\/$/, "")}/`);
 const socialImageUrl = new URL("og.png", metadataBase).toString();
 const title = "SunShinSon · Vui học mỗi ngày";
-const description = "Không gian vui học dành cho bé với Tìm số, Cờ caro, Cờ vua, Cờ tướng và nhiều hoạt động khám phá mỗi ngày.";
+const description = "Không gian vui học dành cho bé với Tìm số, Nhớ số, Cờ caro, Cờ vua, Cờ tướng và nhiều hoạt động khám phá mỗi ngày.";
 
 export const metadata: Metadata = {
   metadataBase,

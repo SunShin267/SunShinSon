@@ -70,6 +70,16 @@ const topics: Topic[] = [
     preview: ["Từ 1 đến 10", "Từ 1 đến 20", "Tìm số bí mật"],
   },
   {
+    id: "nho-so",
+    title: "Nhớ số siêu tốc",
+    eyebrow: "Rèn trí nhớ",
+    description: "Nhìn dãy số thật nhanh rồi nhập lại đúng thứ tự.",
+    icon: "🧠",
+    color: "#6d57c7",
+    accent: "#eeeaff",
+    preview: ["Ba mức độ", "Chuỗi dài dần", "Lưu kỷ lục"],
+  },
+  {
     id: "tinh-nhanh",
     title: "Tính nhanh như chớp",
     eyebrow: "Luyện phản xạ",
@@ -187,7 +197,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
         <section className="topics-section" aria-labelledby="topics-title">
           <div className="section-heading">
             <h2 id="topics-title">Góc vui học</h2>
-            <span>8 hoạt động dành cho bé</span>
+            <span>9 hoạt động dành cho bé</span>
           </div>
           <div className="topic-grid">
             {topics.map((topic, index) => (
@@ -209,6 +219,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
 
                   const gamePaths: Record<string, string> = {
                     "tim-so": "/tim-so",
+                    "nho-so": "/nho-so",
                     "co-caro": "/co-caro",
                     "co-vua": "/co-vua",
                     "co-tuong": "/co-tuong",
