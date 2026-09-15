@@ -13,133 +13,31 @@ import {
   SAVED_COLORING_STORAGE_VERSION,
   type SavedColoringArt,
 } from "./saved-coloring";
-import { ColoringCanvas } from "./ColoringCanvas";
+import {
+  coloringArts,
+  coloringDownloadExtension,
+  getColoringArtById,
+  libraryThemes,
+  suggestions,
+  type ColoringArt,
+} from "./coloring-arts";
+import { savePaintingSession } from "./painting-session";
 import "./to-mau.css";
-
-type ColoringArt = {
-  id: string;
-  title: string;
-  prompt: string;
-  src: string;
-  icon: string;
-  theme: string;
-  generated?: boolean;
-  saved?: boolean;
-};
 
 type ColoringApiResponse = {
   image?: string;
   error?: { message?: string };
 };
 
-const coloringArts: ColoringArt[] = [
-  {
-    id: "astronaut",
-    title: "Bạn nhỏ khám phá Mặt Trăng",
-    prompt: "Bạn phi hành gia vẫy tay bên xe thám hiểm trên Mặt Trăng",
-    src: "/images/to-mau/phi-hanh-gia.png",
-    icon: "🚀",
-    theme: "Vũ trụ",
-  },
-  {
-    id: "dinosaur",
-    title: "Khủng long trong vườn dương xỉ",
-    prompt: "Khủng long con vui vẻ khám phá khu vườn thời tiền sử",
-    src: "/images/to-mau/khung-long.png",
-    icon: "🦕",
-    theme: "Khủng long",
-  },
-  {
-    id: "rabbit",
-    title: "Thỏ ôm củ cà rốt",
-    prompt: "Bạn thỏ ôm củ cà rốt thật to trong vườn hoa",
-    src: "/images/to-mau/tho-ca-rot.png",
-    icon: "🐰",
-    theme: "Động vật",
-  },
-  {
-    id: "submarine",
-    title: "Tàu ngầm và rùa biển",
-    prompt: "Tàu ngầm nhỏ gặp bạn rùa dưới đáy đại dương",
-    src: "/images/to-mau/tau-ngam.png",
-    icon: "🐢",
-    theme: "Đại dương",
-  },
-  {
-    id: "unicorn",
-    title: "Kỳ lân dưới cầu vồng",
-    prompt: "Bạn kỳ lân con vui vẻ đi giữa vườn hoa dưới cầu vồng",
-    src: "/images/to-mau/ky-lan-cau-vong.webp",
-    icon: "🦄",
-    theme: "Kỳ diệu",
-  },
-  {
-    id: "fire-truck",
-    title: "Xe cứu hỏa thân thiện",
-    prompt: "Xe cứu hỏa vui vẻ và bạn lính cứu hỏa đang vẫy tay",
-    src: "/images/to-mau/xe-cuu-hoa.webp",
-    icon: "🚒",
-    theme: "Phương tiện",
-  },
-  {
-    id: "garden-robot",
-    title: "Robot chăm vườn hoa",
-    prompt: "Bạn robot tròn đáng yêu đang tưới một bông hoa lớn",
-    src: "/images/to-mau/robot-lam-vuon.webp",
-    icon: "🤖",
-    theme: "Công nghệ",
-  },
-  {
-    id: "castle-dragon",
-    title: "Rồng con thăm lâu đài",
-    prompt: "Bạn rồng con hiền lành đến thăm tòa lâu đài cổ tích",
-    src: "/images/to-mau/rong-tham-lau-dai.webp",
-    icon: "🐲",
-    theme: "Kỳ diệu",
-  },
-  {
-    id: "safari-friends",
-    title: "Những người bạn Safari",
-    prompt: "Voi con, hươu cao cổ và sư tử con chơi cùng nhau ở thảo nguyên",
-    src: "/images/to-mau/ban-be-safari.webp",
-    icon: "🦒",
-    theme: "Động vật",
-  },
-  {
-    id: "mermaid",
-    title: "Nàng tiên cá và bạn cá",
-    prompt: "Nàng tiên cá vui vẻ vẫy tay chào hai bạn cá dưới đại dương",
-    src: "/images/to-mau/nang-tien-ca.webp",
-    icon: "🧜‍♀️",
-    theme: "Đại dương",
-  },
-  {
-    id: "excavator",
-    title: "Xe xúc cát chăm chỉ",
-    prompt: "Chiếc xe xúc thân thiện đang xúc một đống cát nhỏ",
-    src: "/images/to-mau/xe-xuc-cat.webp",
-    icon: "🚜",
-    theme: "Phương tiện",
-  },
-  {
-    id: "forest-picnic",
-    title: "Dã ngoại trong rừng",
-    prompt: "Gấu con và cú mèo cùng ăn picnic trong khu rừng vui vẻ",
-    src: "/images/to-mau/da-ngoai-rung.webp",
-    icon: "🧺",
-    theme: "Động vật",
-  },
-];
-
-const suggestions = coloringArts.slice(0, 3);
-const galleryThemes = ["Tất cả", "Mẫu của bé", "Động vật", "Phương tiện", "Kỳ diệu", "Vũ trụ", "Khủng long", "Đại dương", "Công nghệ"];
+const galleryThemes = ["Tất cả", "Mẫu của bé", ...libraryThemes];
 
 function chooseFallbackArt(prompt: string) {
   const normalized = prompt.toLocaleLowerCase("vi");
-  if (normalized.includes("thỏ") || normalized.includes("cà rốt")) return coloringArts[2];
-  if (normalized.includes("khủng") || normalized.includes("dinosaur")) return coloringArts[1];
-  if (normalized.includes("biển") || normalized.includes("tàu ngầm") || normalized.includes("rùa")) return coloringArts[3];
-  return coloringArts[0];
+  if (normalized.includes("siêu nhân") || normalized.includes("anh hùng")) return getColoringArtById("sieu-nhan-anh-duong")!;
+  if (normalized.includes("thỏ") || normalized.includes("cà rốt")) return getColoringArtById("rabbit")!;
+  if (normalized.includes("khủng") || normalized.includes("dinosaur")) return getColoringArtById("dinosaur")!;
+  if (normalized.includes("biển") || normalized.includes("tàu ngầm") || normalized.includes("rùa")) return getColoringArtById("submarine")!;
+  return getColoringArtById("astronaut")!;
 }
 
 export default function ColoringPage() {
@@ -153,14 +51,19 @@ export default function ColoringPage() {
   const [savedArts, setSavedArts] = useState<SavedColoringArt[]>([]);
 
   useEffect(() => {
-    const savedName = readChildName().trim();
-    if (savedName) setChildName(savedName);
-    const savedCollection = readVersionedStorage(
-      SAVED_COLORING_STORAGE_KEY,
-      SAVED_COLORING_STORAGE_VERSION,
-      isSavedColoringCollection,
-    );
-    if (savedCollection) setSavedArts(savedCollection);
+    let isActive = true;
+    queueMicrotask(() => {
+      if (!isActive) return;
+      const savedName = readChildName().trim();
+      if (savedName) setChildName(savedName);
+      const savedCollection = readVersionedStorage(
+        SAVED_COLORING_STORAGE_KEY,
+        SAVED_COLORING_STORAGE_VERSION,
+        isSavedColoringCollection,
+      );
+      if (savedCollection) setSavedArts(savedCollection);
+    });
+    return () => { isActive = false; };
   }, []);
 
   async function draw() {
@@ -235,6 +138,11 @@ export default function ColoringPage() {
     setGenerationNotice("Đã bỏ tranh khỏi “Mẫu của bé”.");
   }
 
+  function startPainting(art: ColoringArt) {
+    savePaintingSession(art);
+    navigateInternal(`/to-mau/to/${encodeURIComponent(art.id)}`);
+  }
+
   const allArts: ColoringArt[] = [...savedArts, ...coloringArts];
   const visibleArts = allArts.filter((art) => activeTheme === "Tất cả" || art.theme === activeTheme);
   const selectedIsSaved = Boolean(selectedArt && savedArts.some((art) => art.id === selectedArt.id));
@@ -303,7 +211,21 @@ export default function ColoringPage() {
 
             <div className={`coloring-preview ${selectedArt ? "has-art" : ""}`} aria-live="polite">
               {selectedArt ? (
-                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} isSaved={selectedIsSaved} onSave={saveSelectedArt} />
+                <>
+                  <div className="coloring-paper coloring-view-paper">
+                    <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
+                    <div className="coloring-view-image"><img src={selectedArt.src} alt={selectedArt.title} /></div>
+                    <p>{selectedArt.title}</p>
+                  </div>
+                  <div className="coloring-preview-actions">
+                    <button onClick={() => window.print()}>⌁ In tranh</button>
+                    <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.${coloringDownloadExtension(selectedArt.src)}`}>↓ Tải tranh</a>
+                    <button className="coloring-start-paint" onClick={() => startPainting(selectedArt)}>✎ Tô tranh</button>
+                    {selectedArt.generated ? (
+                      <button className="coloring-save" onClick={saveSelectedArt} disabled={selectedIsSaved}>{selectedIsSaved ? "✓ Đã lưu" : "♡ Lưu vào mẫu"}</button>
+                    ) : null}
+                  </div>
+                </>
               ) : (
                 <div className="coloring-empty">
                   <span aria-hidden="true">✦</span>
@@ -330,7 +252,7 @@ export default function ColoringPage() {
               {visibleArts.map((art) => (
                 <div className="coloring-card-shell" key={art.id}>
                   <button className="coloring-card" onClick={() => openArt(art)}>
-                    <span className="coloring-card-image"><img src={art.src} alt="" /></span>
+                    <span className="coloring-card-image"><img src={art.src} alt="" loading="lazy" decoding="async" /></span>
                     <span className="coloring-card-copy"><small>{art.icon} {art.theme}</small><strong>{art.title}</strong><span>Chọn tranh này <b aria-hidden="true">→</b></span></span>
                   </button>
                   {art.saved ? (
