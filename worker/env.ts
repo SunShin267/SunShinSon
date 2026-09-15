@@ -9,6 +9,8 @@ export interface Env {
   };
   CLOUDFLARE_AI_ACCOUNT_ID?: string;
   CLOUDFLARE_AI_API_TOKEN?: string;
+  COLORING_AI_PROXY_URL?: string;
+  COLORING_AI_PROXY_SECRET?: string;
   IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

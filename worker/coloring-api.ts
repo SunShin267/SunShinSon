@@ -2,6 +2,7 @@ import type { Env } from "./env.ts";
 import { errorResponse, jsonResponse } from "./http.ts";
 
 const COLORING_API_PATH = "/api/coloring/generate";
+const COLORING_INTERNAL_API_PATH = "/api/internal/coloring/generate";
 const COLORING_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const MAX_PROMPT_LENGTH = 160;
 
@@ -71,8 +72,67 @@ async function runWithRestApi(env: Env, prompt: string): Promise<string | null> 
   return imageFromResult(payload.result);
 }
 
+async function runWithProxy(env: Env, prompt: string): Promise<string | null> {
+  const proxyUrl = env.COLORING_AI_PROXY_URL?.trim().replace(/\/$/, "");
+  const proxySecret = env.COLORING_AI_PROXY_SECRET?.trim();
+  if (!proxyUrl || !proxySecret) return null;
+
+  const response = await fetch(`${proxyUrl}${COLORING_INTERNAL_API_PATH}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-coloring-proxy-secret": proxySecret,
+    },
+    body: JSON.stringify({ prompt }),
+    signal: AbortSignal.timeout(45_000),
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Coloring proxy returned ${response.status}`);
+    Object.assign(error, { status: response.status, retryAfter: response.headers.get("retry-after") });
+    throw error;
+  }
+
+  const payload = await response.json() as { image?: unknown };
+  return typeof payload.image === "string" && payload.image.length > 0 ? payload.image : null;
+}
+
+async function handleInternalColoringRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return errorResponse(405, "METHOD_NOT_ALLOWED", "Method not allowed.", undefined, { allow: "POST" });
+  }
+
+  const expectedSecret = env.COLORING_AI_PROXY_SECRET?.trim();
+  const providedSecret = request.headers.get("x-coloring-proxy-secret")?.trim();
+  if (!expectedSecret || !providedSecret || expectedSecret !== providedSecret) {
+    return errorResponse(401, "UNAUTHORIZED", "Unauthorized.");
+  }
+
+  let body: ColoringRequestBody;
+  try {
+    body = await request.json() as ColoringRequestBody;
+  } catch {
+    return errorResponse(400, "INVALID_JSON", "Invalid request.");
+  }
+
+  const prompt = normalizeColoringPrompt(body.prompt);
+  if (!prompt || prompt.length > 2048 || !env.AI) {
+    return errorResponse(503, "AI_UNAVAILABLE", "Image provider unavailable.");
+  }
+
+  try {
+    const image = await runWithBinding(env, prompt);
+    return image
+      ? jsonResponse({ image }, 200, { "cache-control": "no-store" })
+      : errorResponse(502, "AI_EMPTY_RESULT", "Image provider returned no image.");
+  } catch {
+    return errorResponse(502, "AI_GENERATION_FAILED", "Image provider failed.");
+  }
+}
+
 export async function handleColoringApiRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
+  if (url.pathname === COLORING_INTERNAL_API_PATH) return handleInternalColoringRequest(request, env);
   if (url.pathname !== COLORING_API_PATH) return null;
 
   if (request.method !== "POST") {
@@ -106,7 +166,9 @@ export async function handleColoringApiRequest(request: Request, env: Env): Prom
 
   try {
     const generatedPrompt = buildColoringPrompt(idea);
-    const image = await runWithBinding(env, generatedPrompt) ?? await runWithRestApi(env, generatedPrompt);
+    const image = await runWithBinding(env, generatedPrompt)
+      ?? await runWithProxy(env, generatedPrompt)
+      ?? await runWithRestApi(env, generatedPrompt);
     if (!image) {
       return errorResponse(503, "AI_NOT_CONFIGURED", "Sun đang dùng thư viện tranh mẫu trong lúc chờ kết nối xưởng vẽ AI.");
     }
