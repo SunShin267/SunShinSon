@@ -56,6 +56,7 @@
 .coloring-draw:disabled { opacity: .46; cursor: not-allowed; }
 .coloring-name { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 2px solid var(--coloring-ink); border-radius: 15px; background: #fff; font-size: 12px; }
 .coloring-name > span:first-child { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #fff0bd; font-weight: 1000; }
+.coloring-generation-notice { margin: 16px 0 0; padding: 11px 13px; border: 1px solid #d7c58d; border-radius: 12px; background: #fffaf0; color: #685d50; font-size: 11px; font-weight: 800; line-height: 1.5; }
 .coloring-tip { display: flex; align-items: flex-start; gap: 11px; margin-top: 20px; padding: 14px; border-radius: 14px; background: #fff5d9; }
 .coloring-tip > span { width: 31px; height: 31px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--coloring-yellow); }
 .coloring-tip p { margin: 0; color: #6f655b; font-size: 11px; line-height: 1.55; }

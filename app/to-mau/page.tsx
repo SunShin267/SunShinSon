@@ -14,6 +14,12 @@ type ColoringArt = {
   src: string;
   icon: string;
   theme: string;
+  generated?: boolean;
+};
+
+type ColoringApiResponse = {
+  image?: string;
+  error?: { message?: string };
 };
 
 const coloringArts: ColoringArt[] = [
@@ -54,7 +60,7 @@ const coloringArts: ColoringArt[] = [
 const suggestions = coloringArts.slice(0, 3);
 const galleryThemes = ["Tất cả", "Vũ trụ", "Động vật", "Khủng long", "Đại dương"];
 
-function chooseArt(prompt: string) {
+function chooseFallbackArt(prompt: string) {
   const normalized = prompt.toLocaleLowerCase("vi");
   if (normalized.includes("thỏ") || normalized.includes("cà rốt")) return coloringArts[2];
   if (normalized.includes("khủng") || normalized.includes("dinosaur")) return coloringArts[1];
@@ -69,19 +75,43 @@ export default function ColoringPage() {
   const [selectedArt, setSelectedArt] = useState<ColoringArt | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [activeTheme, setActiveTheme] = useState("Tất cả");
+  const [generationNotice, setGenerationNotice] = useState("");
 
   useEffect(() => {
     const savedName = readChildName().trim();
     if (savedName) setChildName(savedName);
   }, []);
 
-  function draw() {
+  async function draw() {
     if (!prompt.trim() || isDrawing) return;
     setIsDrawing(true);
-    window.setTimeout(() => {
-      setSelectedArt(chooseArt(prompt));
+    setGenerationNotice("");
+
+    try {
+      const response = await fetch("/api/coloring/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      const payload = await response.json() as ColoringApiResponse;
+      if (!response.ok || !payload.image) throw new Error(payload.error?.message || "AI unavailable");
+
+      setSelectedArt({
+        id: `sun-ai-${Date.now()}`,
+        title: prompt.trim(),
+        prompt: prompt.trim(),
+        src: payload.image,
+        icon: "✨",
+        theme: "Tranh AI",
+        generated: true,
+      });
+      setGenerationNotice("Sun vừa vẽ riêng một bức tranh mới từ ý tưởng của bé!");
+    } catch {
+      setSelectedArt(chooseFallbackArt(prompt));
+      setGenerationNotice("Xưởng vẽ AI đang nghỉ một chút, Sun đã chọn một tranh mẫu gần nhất để bé vẫn có thể tô ngay.");
+    } finally {
       setIsDrawing(false);
-    }, 650);
+    }
   }
 
   function openArt(art: ColoringArt) {
@@ -147,6 +177,8 @@ export default function ColoringPage() {
                 <div className="coloring-name"><span aria-hidden="true">☺</span><span>Tranh của <strong>{childName}</strong></span></div>
               </div>
 
+              {generationNotice ? <p className="coloring-generation-notice" role="status">{generationNotice}</p> : null}
+
               <div className="coloring-tip"><span aria-hidden="true">☀</span><p><strong>Mẹo nhỏ</strong> Bé kể thêm nơi chốn hoặc người bạn đi cùng để ý tưởng sinh động hơn nhé.</p></div>
             </div>
 
@@ -160,7 +192,7 @@ export default function ColoringPage() {
                   </div>
                   <div className="coloring-preview-actions">
                     <button onClick={() => window.print()}>⌁ In tranh A4</button>
-                    <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.png`}>↓ Tải ảnh</a>
+                    <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.${selectedArt.generated ? "jpg" : "png"}`}>↓ Tải ảnh</a>
                   </div>
                 </>
               ) : (

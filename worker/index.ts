@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import type { ImageHandlers } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import type { Env } from "./env";
+import { handleColoringApiRequest } from "./coloring-api";
 import { handleApiRequest } from "./questions-api";
 import { handleXiangqiApiRequest } from "./xiangqi-api";
 
@@ -20,6 +21,9 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    const coloringApiResponse = await handleColoringApiRequest(request, env);
+    if (coloringApiResponse) return coloringApiResponse;
 
     const xiangqiApiResponse = await handleXiangqiApiRequest(request, env);
     if (xiangqiApiResponse) return xiangqiApiResponse;
