@@ -77,6 +77,8 @@
 .coloring-preview-actions { display: flex; justify-content: center; gap: 8px; }
 .coloring-preview-actions button, .coloring-preview-actions a { min-height: 39px; display: inline-flex; align-items: center; padding: 0 13px; border: 1px solid var(--coloring-ink); border-radius: 11px; background: #fff; color: var(--coloring-ink); text-decoration: none; font-size: 11px; font-weight: 900; cursor: pointer; }
 .coloring-preview-actions button:hover, .coloring-preview-actions a:hover { background: #fff1bf; }
+.coloring-preview-actions .coloring-save { background: var(--coloring-yellow); }
+.coloring-preview-actions .coloring-save:disabled { background: #eae5dc; color: #777067; cursor: default; }
 
 .coloring-gallery { padding: 76px max(20px, calc((100vw - 1180px) / 2)) 90px; border-top: 2px solid var(--coloring-ink); background: #fffdf8; scroll-margin-top: 84px; }
 .coloring-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
@@ -86,7 +88,8 @@
 .coloring-filters button { min-height: 39px; padding: 0 14px; border: 1px solid #cfc6ba; border-radius: 100px; background: #fff; font-size: 12px; font-weight: 900; cursor: pointer; }
 .coloring-filters button.is-active { border-color: var(--coloring-ink); background: var(--coloring-ink); color: #fff; }
 .coloring-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.coloring-card { min-width: 0; padding: 0; border: 2px solid var(--coloring-ink); border-radius: 19px; overflow: hidden; background: #fff; text-align: left; cursor: pointer; box-shadow: 0 5px 0 var(--coloring-ink); transition: transform .2s, box-shadow .2s; }
+.coloring-card-shell { position: relative; min-width: 0; }
+.coloring-card { width: 100%; height: 100%; min-width: 0; padding: 0; border: 2px solid var(--coloring-ink); border-radius: 19px; overflow: hidden; background: #fff; text-align: left; cursor: pointer; box-shadow: 0 5px 0 var(--coloring-ink); transition: transform .2s, box-shadow .2s; }
 .coloring-card:hover { transform: translateY(-5px) rotate(-.5deg); box-shadow: 0 10px 0 var(--coloring-yellow); }
 .coloring-card-image { aspect-ratio: 1; display: block; padding: 9px; border-bottom: 2px solid var(--coloring-ink); background: #f6d777; overflow: hidden; }
 .coloring-card-image img { width: 100%; height: 100%; display: block; border-radius: 11px; object-fit: cover; filter: contrast(1.07); background: #fff; }
@@ -95,6 +98,12 @@
 .coloring-card-copy strong { min-height: 43px; margin-top: 6px; font-size: 15px; line-height: 1.35; }
 .coloring-card-copy > span { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; color: #766c63; font-size: 10px; font-weight: 900; }
 .coloring-card-copy b { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; background: var(--coloring-yellow); color: var(--coloring-ink); font-size: 15px; }
+.coloring-card-remove { position: absolute; top: 9px; right: 9px; width: 34px; height: 34px; display: grid; place-items: center; border: 2px solid var(--coloring-ink); border-radius: 50%; background: #fff; color: var(--coloring-ink); font-size: 22px; font-weight: 900; line-height: 1; cursor: pointer; box-shadow: 0 3px 0 var(--coloring-ink); }
+.coloring-card-remove:hover { background: #ffd8cd; transform: translateY(-1px); }
+.coloring-gallery-empty { padding: 52px 20px; border: 2px dashed #cfc6ba; border-radius: 22px; background: #fffaf0; text-align: center; color: #766c63; }
+.coloring-gallery-empty > span { display: block; color: var(--coloring-orange); font-size: 38px; }
+.coloring-gallery-empty strong { display: block; margin-top: 8px; color: var(--coloring-ink); font-size: 18px; }
+.coloring-gallery-empty p { margin: 8px 0 0; font-size: 12px; }
 .coloring-footer { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 24px; border-top: 1px solid #e4ddd2; background: #fffdf8; }
 .coloring-footer p { margin: 0; color: #847a70; font-size: 11px; }
 
@@ -123,6 +132,7 @@
   .coloring-actions { grid-template-columns: 1fr; }
   .coloring-preview { min-height: 480px; padding: 15px; }
   .coloring-paper { max-height: 420px; }
+  .coloring-preview-actions { flex-wrap: wrap; }
   .coloring-gallery { padding: 54px 12px 70px; }
   .coloring-section-heading { align-items: flex-start; flex-direction: column; }
   .coloring-section-heading > p { display: none; }
