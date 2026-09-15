@@ -13,6 +13,7 @@ import {
   SAVED_COLORING_STORAGE_VERSION,
   type SavedColoringArt,
 } from "./saved-coloring";
+import { ColoringCanvas } from "./ColoringCanvas";
 import "./to-mau.css";
 
 type ColoringArt = {
@@ -139,12 +140,6 @@ function chooseFallbackArt(prompt: string) {
   if (normalized.includes("khủng") || normalized.includes("dinosaur")) return coloringArts[1];
   if (normalized.includes("biển") || normalized.includes("tàu ngầm") || normalized.includes("rùa")) return coloringArts[3];
   return coloringArts[0];
-}
-
-function downloadExtension(art: ColoringArt) {
-  if (/\.webp(?:\?|$)/i.test(art.src) || art.src.startsWith("data:image/webp")) return "webp";
-  if (/\.png(?:\?|$)/i.test(art.src) || art.src.startsWith("data:image/png")) return "png";
-  return "jpg";
 }
 
 export default function ColoringPage() {
@@ -308,22 +303,7 @@ export default function ColoringPage() {
 
             <div className={`coloring-preview ${selectedArt ? "has-art" : ""}`} aria-live="polite">
               {selectedArt ? (
-                <>
-                  <div className="coloring-paper">
-                    <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
-                    <img src={selectedArt.src} alt={selectedArt.title} />
-                    <p>{selectedArt.title}</p>
-                  </div>
-                  <div className="coloring-preview-actions">
-                    <button onClick={() => window.print()}>⌁ In tranh A4</button>
-                    <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.${downloadExtension(selectedArt)}`}>↓ Tải ảnh</a>
-                    {selectedArt.generated ? (
-                      <button className="coloring-save" onClick={saveSelectedArt} disabled={selectedIsSaved}>
-                        {selectedIsSaved ? "✓ Đã lưu" : "♡ Lưu vào mẫu"}
-                      </button>
-                    ) : null}
-                  </div>
-                </>
+                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} isSaved={selectedIsSaved} onSave={saveSelectedArt} />
               ) : (
                 <div className="coloring-empty">
                   <span aria-hidden="true">✦</span>

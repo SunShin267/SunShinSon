@@ -68,17 +68,37 @@
 .coloring-empty h2 { margin: 0; font-size: 22px; letter-spacing: -.5px; }
 .coloring-empty p { margin: 10px 0 0; color: #81786f; font-size: 13px; }
 .coloring-preview.has-art { display: flex; flex-direction: column; justify-content: center; gap: 13px; background: #f4eee3; }
-.coloring-paper { width: min(100%, 395px); max-height: 520px; display: flex; flex-direction: column; padding: 18px 20px 13px; border: 1px solid #d9d3ca; background: #fff; box-shadow: 0 14px 30px rgba(53,42,28,.14); }
+.coloring-paper { width: min(100%, 430px); max-height: 560px; display: flex; flex-direction: column; padding: 18px 20px 13px; border: 1px solid #d9d3ca; background: #fff; box-shadow: 0 14px 30px rgba(53,42,28,.14); }
 .coloring-paper-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 9px; border-bottom: 1px solid #ddd; font-size: 10px; }
 .coloring-paper-heading span { font-weight: 1000; }
 .coloring-paper-heading strong { color: #6c635b; }
-.coloring-paper img { display: block; width: 100%; min-height: 0; flex: 1; object-fit: contain; }
+.coloring-canvas-wrap { position: relative; min-height: 0; flex: 1; aspect-ratio: 1; overflow: hidden; background: #fff; }
+.coloring-canvas-wrap img, .coloring-canvas-wrap canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.coloring-canvas-wrap img { object-fit: contain; user-select: none; }
+.coloring-canvas-wrap canvas { z-index: 1; cursor: crosshair; touch-action: none; mix-blend-mode: multiply; }
+.coloring-canvas-wrap canvas.is-erasing { cursor: cell; }
 .coloring-paper > p { margin: 6px 0 0; text-align: center; font-size: 11px; font-weight: 900; }
-.coloring-preview-actions { display: flex; justify-content: center; gap: 8px; }
+.coloring-paint-tools { width: min(100%, 520px); padding: 11px; border: 1px solid #cfc5b7; border-radius: 15px; background: #fffdf8; box-shadow: 0 5px 14px rgba(53,42,28,.08); }
+.coloring-paint-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.coloring-paint-heading strong { font-size: 12px; }
+.coloring-paint-heading span { color: #857b71; font-size: 9px; font-weight: 800; }
+.coloring-palette { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; }
+.coloring-palette button { width: 27px; height: 27px; padding: 0; border: 2px solid #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px #81776c; transition: transform .15s, box-shadow .15s; }
+.coloring-palette button:hover { transform: scale(1.1); }
+.coloring-palette button.is-active { transform: scale(1.13); box-shadow: 0 0 0 3px var(--coloring-yellow), 0 0 0 5px var(--coloring-ink); }
+.coloring-tool-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.coloring-tool-row button { min-height: 31px; padding: 0 9px; border: 1px solid #bdb3a7; border-radius: 9px; background: #fff; color: var(--coloring-ink); font-size: 9px; font-weight: 900; cursor: pointer; }
+.coloring-tool-row button.is-active { border-color: var(--coloring-ink); background: #fff0bd; }
+.coloring-tool-row button:disabled { opacity: .4; cursor: default; }
+.coloring-tool-row label { display: inline-flex; align-items: center; gap: 5px; color: #6f665d; font-size: 9px; font-weight: 900; }
+.coloring-tool-row input { width: 70px; accent-color: var(--coloring-orange); }
+.coloring-preview-actions { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; }
 .coloring-preview-actions button, .coloring-preview-actions a { min-height: 39px; display: inline-flex; align-items: center; padding: 0 13px; border: 1px solid var(--coloring-ink); border-radius: 11px; background: #fff; color: var(--coloring-ink); text-decoration: none; font-size: 11px; font-weight: 900; cursor: pointer; }
 .coloring-preview-actions button:hover, .coloring-preview-actions a:hover { background: #fff1bf; }
 .coloring-preview-actions .coloring-save { background: var(--coloring-yellow); }
 .coloring-preview-actions .coloring-save:disabled { background: #eae5dc; color: #777067; cursor: default; }
+.coloring-preview-actions .coloring-download-painted { background: #dff7e7; }
+.coloring-preview-actions .coloring-download-painted:disabled { background: #eae5dc; color: #8b837a; cursor: default; }
 
 .coloring-gallery { padding: 76px max(20px, calc((100vw - 1180px) / 2)) 90px; border-top: 2px solid var(--coloring-ink); background: #fffdf8; scroll-margin-top: 84px; }
 .coloring-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
@@ -133,6 +153,8 @@
   .coloring-preview { min-height: 480px; padding: 15px; }
   .coloring-paper { max-height: 420px; }
   .coloring-preview-actions { flex-wrap: wrap; }
+  .coloring-paint-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .coloring-tool-row input { width: 58px; }
   .coloring-gallery { padding: 54px 12px 70px; }
   .coloring-section-heading { align-items: flex-start; flex-direction: column; }
   .coloring-section-heading > p { display: none; }
@@ -147,7 +169,7 @@
   .coloring-preview, .coloring-preview * { visibility: visible !important; }
   .coloring-preview { position: fixed; inset: 0; display: grid !important; place-items: center; border: 0; padding: 0; background: #fff !important; }
   .coloring-paper { width: 190mm; max-height: 275mm; border: 0; box-shadow: none; }
-  .coloring-preview-actions { display: none !important; }
+  .coloring-preview-actions, .coloring-paint-tools { display: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
