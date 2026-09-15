@@ -4,6 +4,8 @@ import { errorResponse, jsonResponse } from "./http.ts";
 const COLORING_API_PATH = "/api/coloring/generate";
 const COLORING_INTERNAL_API_PATH = "/api/internal/coloring/generate";
 const COLORING_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+const POLLINATIONS_API_URL = "https://gen.pollinations.ai/v1/images/generations";
+const POLLINATIONS_DEFAULT_MODEL = "flux";
 const MAX_PROMPT_LENGTH = 160;
 
 type ColoringRequestBody = {
@@ -12,6 +14,18 @@ type ColoringRequestBody = {
 
 type WorkersAiImage = {
   image?: unknown;
+};
+
+type GeneratedImage = {
+  image: string;
+  model: string;
+  provider: "cloudflare" | "pollinations";
+};
+
+type ImageProvider = {
+  model: string;
+  provider: GeneratedImage["provider"];
+  run: () => Promise<string | null>;
 };
 
 const unsafePromptPattern = /\b(?:khỏa thân|khoa than|tình dục|tinh duc|máu me|mau me|giết|giet|súng|sung|dao đâm|dao dam|nude|sexual|gore|kill|gun)\b/i;
@@ -97,6 +111,89 @@ async function runWithProxy(env: Env, prompt: string): Promise<string | null> {
   return typeof payload.image === "string" && payload.image.length > 0 ? payload.image : null;
 }
 
+async function runWithPollinations(env: Env, prompt: string): Promise<string | null> {
+  const apiKey = env.POLLINATIONS_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const model = env.POLLINATIONS_IMAGE_MODEL?.trim() || POLLINATIONS_DEFAULT_MODEL;
+  const response = await fetch(POLLINATIONS_API_URL, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt,
+      model,
+      n: 1,
+      size: "1024x1024",
+      quality: "medium",
+      response_format: "b64_json",
+      safe: "privacy,secrets,sexual,violence,shield",
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Pollinations returned ${response.status}`);
+    Object.assign(error, { status: response.status, retryAfter: response.headers.get("retry-after") });
+    throw error;
+  }
+
+  const payload = await response.json() as { data?: Array<{ b64_json?: unknown }> };
+  const image = payload.data?.[0]?.b64_json;
+  if (typeof image !== "string" || image.length === 0) return null;
+  return image.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, "");
+}
+
+async function generateWithFallback(env: Env, prompt: string): Promise<GeneratedImage | null> {
+  const providers: ImageProvider[] = [];
+
+  if (env.AI) {
+    providers.push({
+      provider: "cloudflare",
+      model: "flux-1-schnell",
+      run: () => runWithBinding(env, prompt),
+    });
+  }
+  if (env.COLORING_AI_PROXY_URL?.trim() && env.COLORING_AI_PROXY_SECRET?.trim()) {
+    providers.push({
+      provider: "cloudflare",
+      model: "flux-1-schnell",
+      run: () => runWithProxy(env, prompt),
+    });
+  }
+  if (env.CLOUDFLARE_AI_ACCOUNT_ID?.trim() && env.CLOUDFLARE_AI_API_TOKEN?.trim()) {
+    providers.push({
+      provider: "cloudflare",
+      model: "flux-1-schnell",
+      run: () => runWithRestApi(env, prompt),
+    });
+  }
+  if (env.POLLINATIONS_API_KEY?.trim()) {
+    providers.push({
+      provider: "pollinations",
+      model: env.POLLINATIONS_IMAGE_MODEL?.trim() || POLLINATIONS_DEFAULT_MODEL,
+      run: () => runWithPollinations(env, prompt),
+    });
+  }
+
+  if (providers.length === 0) return null;
+
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+      const image = await provider.run();
+      if (image) return { image, model: provider.model, provider: provider.provider };
+      lastError = new Error(`${provider.provider} returned an empty image`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("No image provider returned an image");
+}
+
 async function handleInternalColoringRequest(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
     return errorResponse(405, "METHOD_NOT_ALLOWED", "Method not allowed.", undefined, { allow: "POST" });
@@ -166,15 +263,13 @@ export async function handleColoringApiRequest(request: Request, env: Env): Prom
 
   try {
     const generatedPrompt = buildColoringPrompt(idea);
-    const image = await runWithBinding(env, generatedPrompt)
-      ?? await runWithProxy(env, generatedPrompt)
-      ?? await runWithRestApi(env, generatedPrompt);
-    if (!image) {
+    const result = await generateWithFallback(env, generatedPrompt);
+    if (!result) {
       return errorResponse(503, "AI_NOT_CONFIGURED", "Sun đang dùng thư viện tranh mẫu trong lúc chờ kết nối xưởng vẽ AI.");
     }
 
     return jsonResponse(
-      { image: `data:image/jpeg;base64,${image}`, model: "flux-1-schnell" },
+      { image: `data:image/jpeg;base64,${result.image}`, model: result.model, provider: result.provider },
       200,
       { "cache-control": "no-store", "x-content-type-options": "nosniff" },
     );

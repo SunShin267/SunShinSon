@@ -11,6 +11,8 @@ export interface Env {
   CLOUDFLARE_AI_API_TOKEN?: string;
   COLORING_AI_PROXY_URL?: string;
   COLORING_AI_PROXY_SECRET?: string;
+  POLLINATIONS_API_KEY?: string;
+  POLLINATIONS_IMAGE_MODEL?: string;
   IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
