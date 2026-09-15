@@ -110,6 +110,16 @@ const topics: Topic[] = [
     accent: "#dceffd",
     preview: ["Con vật đáng yêu", "Đồ vật quanh em", "Thiên nhiên kỳ thú"],
   },
+  {
+    id: "to-mau",
+    title: "Góc tô màu",
+    eyebrow: "Bé nghĩ, Sun vẽ",
+    description: "Chọn tranh nét thật xinh, in ra và thỏa sức sáng tạo màu sắc.",
+    icon: "🎨",
+    color: "#df5b3c",
+    accent: "#fff0c9",
+    preview: ["Kể ý tưởng", "Chọn tranh mẫu", "In giấy A4"],
+  },
 ];
 
 function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
@@ -195,7 +205,7 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
         <section className="topics-section" aria-labelledby="topics-title">
           <div className="section-heading">
             <h2 id="topics-title">Góc vui học</h2>
-            <span>9 hoạt động dành cho bé</span>
+            <span>10 hoạt động dành cho bé</span>
           </div>
           <div className="topic-grid">
             {topics.map((topic, index) => (
@@ -216,11 +226,13 @@ function HomeScreen({ name, onSelect, onLogout }: { name: string; onSelect: (top
                   }
 
                   const gamePaths: Record<string, string> = {
+                    "hoc-cung-be": "/hoc-cung-be",
                     "tim-so": "/tim-so",
                     "nho-so": "/nho-so",
                     "co-caro": "/co-caro",
                     "co-vua": "/co-vua",
                     "co-tuong": "/co-tuong",
+                    "to-mau": "/to-mau",
                   };
                   const gamePath = gamePaths[topic.id];
                   if (gamePath) {
