@@ -54,7 +54,12 @@
 .coloring-draw:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 7px 0 var(--coloring-ink); }
 .coloring-draw:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--coloring-ink); }
 .coloring-draw:disabled { opacity: .46; cursor: not-allowed; }
-.coloring-name { min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 2px solid var(--coloring-ink); border-radius: 15px; background: #fff; font-size: 12px; }
+.coloring-import { position: relative; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 13px; border: 2px solid var(--coloring-ink); border-radius: 15px; background: #fff3c9; font-size: 12px; font-weight: 1000; cursor: pointer; box-shadow: 0 5px 0 var(--coloring-ink); transition: transform .16s, box-shadow .16s; }
+.coloring-import:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--coloring-ink); }
+.coloring-import:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--coloring-ink); }
+.coloring-import input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.coloring-import:focus-within { outline: 4px solid #7aa5ff; outline-offset: 3px; }
+.coloring-name { grid-column: 1 / -1; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 14px; border: 2px solid var(--coloring-ink); border-radius: 15px; background: #fff; font-size: 12px; }
 .coloring-name > span:first-child { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #fff0bd; font-weight: 1000; }
 .coloring-generation-notice { margin: 16px 0 0; padding: 11px 13px; border: 1px solid #d7c58d; border-radius: 12px; background: #fffaf0; color: #685d50; font-size: 11px; font-weight: 800; line-height: 1.5; }
 .coloring-tip { display: flex; align-items: flex-start; gap: 11px; margin-top: 20px; padding: 14px; border-radius: 14px; background: #fff5d9; }
@@ -89,6 +94,11 @@
 .coloring-palette button { width: 27px; height: 27px; padding: 0; border: 2px solid #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px #81776c; transition: transform .15s, box-shadow .15s; }
 .coloring-palette button:hover { transform: scale(1.1); }
 .coloring-palette button.is-active { transform: scale(1.13); box-shadow: 0 0 0 3px var(--coloring-yellow), 0 0 0 5px var(--coloring-ink); }
+.coloring-brush-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.coloring-brush-presets button { min-height: 43px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 7px; border: 1px solid #cfc5b7; border-radius: 10px; background: #fff; color: var(--coloring-ink); font-size: 9px; font-weight: 900; cursor: pointer; }
+.coloring-brush-presets button:hover { background: #fff8e5; }
+.coloring-brush-presets button.is-active { border: 2px solid var(--coloring-ink); background: #fff0bd; box-shadow: 0 2px 0 var(--coloring-ink); }
+.coloring-brush-preset-dot { flex: 0 0 auto; border: 1px solid var(--coloring-ink); border-radius: 50%; }
 .coloring-tool-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .coloring-tool-row button { min-height: 31px; padding: 0 9px; border: 1px solid #bdb3a7; border-radius: 9px; background: #fff; color: var(--coloring-ink); font-size: 9px; font-weight: 900; cursor: pointer; }
 .coloring-tool-row button.is-active { border-color: var(--coloring-ink); background: #fff0bd; }
@@ -175,6 +185,7 @@
   .coloring-controls { padding: 16px; }
   .coloring-tabs button { font-size: 12px; }
   .coloring-actions { grid-template-columns: 1fr; }
+  .coloring-name { grid-column: auto; }
   .coloring-preview { min-height: 480px; padding: 15px; }
   .coloring-paper { max-height: 420px; }
   .coloring-preview-actions { flex-wrap: wrap; }
@@ -195,10 +206,14 @@
 }
 
 @media print {
-  body * { visibility: hidden !important; }
-  .coloring-preview, .coloring-preview * { visibility: visible !important; }
-  .coloring-preview { position: fixed; inset: 0; display: grid !important; place-items: center; border: 0; padding: 0; background: #fff !important; }
-  .coloring-paper { width: 190mm; max-height: 275mm; border: 0; box-shadow: none; }
+  @page { size: A4 portrait; margin: 8mm; }
+  html, body { width: 100% !important; height: 100% !important; margin: 0 !important; overflow: hidden !important; background: #fff !important; }
+  .coloring-page { min-height: 0 !important; background: #fff !important; }
+  .coloring-header, .coloring-footer, .coloring-intro, .coloring-paint-intro, .coloring-controls, .coloring-gallery { display: none !important; }
+  .coloring-hero, .coloring-paint-main { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  .coloring-workspace, .coloring-paint-workspace { display: block !important; width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: #fff !important; box-shadow: none !important; }
+  .coloring-preview { width: 100% !important; min-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; overflow: hidden !important; background: #fff !important; box-shadow: none !important; }
+  .coloring-paper { box-sizing: border-box !important; width: 194mm !important; height: auto !important; max-width: 194mm !important; max-height: 281mm !important; margin: 0 auto !important; border: 0 !important; box-shadow: none !important; break-inside: avoid !important; page-break-inside: avoid !important; }
   .coloring-preview-actions, .coloring-paint-tools { display: none !important; }
   .coloring-brush-cursor { display: none !important; }
 }

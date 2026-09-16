@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 
 import { SunLogo } from "../components/SunLogo";
 import { readChildName } from "../lib/child-session";
@@ -22,6 +22,7 @@ import {
   type ColoringArt,
 } from "./coloring-arts";
 import { savePaintingSession } from "./painting-session";
+import { printColoringImage } from "./print-coloring";
 import "./to-mau.css";
 
 type ColoringApiResponse = {
@@ -30,6 +31,39 @@ type ColoringApiResponse = {
 };
 
 const galleryThemes = ["Tất cả", "Mẫu của bé", ...libraryThemes];
+const MAX_LOCAL_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_LOCAL_IMAGE_DIMENSION = 1_600;
+
+function loadLocalImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("invalid-image"));
+    image.src = url;
+  });
+}
+
+async function normalizeLocalImage(file: File) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("invalid-type");
+  if (file.size > MAX_LOCAL_IMAGE_BYTES) throw new Error("too-large");
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadLocalImage(objectUrl);
+    const scale = Math.min(1, MAX_LOCAL_IMAGE_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("canvas-unavailable");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/webp", 0.85);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 function chooseFallbackArt(prompt: string) {
   const normalized = prompt.toLocaleLowerCase("vi");
@@ -103,6 +137,36 @@ export default function ColoringPage() {
     setSelectedArt(art);
     setGenerationNotice("");
     document.getElementById("ve")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function importLocalArt(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const src = await normalizeLocalImage(file);
+      const fileTitle = file.name.replace(/\.[^.]+$/, "").trim().slice(0, 140) || "Tranh của bé";
+      const importedArt: ColoringArt = {
+        id: `sun-ai-local-${Date.now()}`,
+        title: fileTitle,
+        prompt: `Tranh nhập từ máy: ${fileTitle}`.slice(0, 160),
+        src,
+        icon: "📁",
+        theme: "Tranh AI",
+        generated: true,
+      };
+      setPrompt(fileTitle);
+      setSelectedArt(importedArt);
+      setGenerationNotice("Đã nhập tranh từ máy. Bé có thể in, tô hoặc lưu tranh vào “Mẫu của bé”!");
+      document.getElementById("ve")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (error) {
+      setGenerationNotice(error instanceof Error && error.message === "too-large"
+        ? "Ảnh lớn hơn 10 MB. Ba mẹ hãy chọn một ảnh nhỏ hơn nhé."
+        : "Sun chưa đọc được ảnh này. Ba mẹ hãy chọn ảnh JPG, PNG hoặc WebP nhé.");
+    } finally {
+      input.value = "";
+    }
   }
 
   function saveSelectedArt() {
@@ -201,6 +265,10 @@ export default function ColoringPage() {
                 <button className="coloring-draw" onClick={draw} disabled={!prompt.trim() || isDrawing}>
                   <span aria-hidden="true">✎</span> {isDrawing ? "Sun đang vẽ..." : "Vẽ cùng Sun"}
                 </button>
+                <label className="coloring-import">
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={importLocalArt} />
+                  <span aria-hidden="true">↑</span> Nhập tranh từ máy
+                </label>
                 <div className="coloring-name"><span aria-hidden="true">☺</span><span>Tranh của <strong>{childName}</strong></span></div>
               </div>
 
@@ -218,7 +286,7 @@ export default function ColoringPage() {
                     <p>{selectedArt.title}</p>
                   </div>
                   <div className="coloring-preview-actions">
-                    <button onClick={() => window.print()}>⌁ In tranh</button>
+                    <button onClick={() => printColoringImage(selectedArt.src, selectedArt.title)}>⌁ In tranh</button>
                     <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.${coloringDownloadExtension(selectedArt.src)}`}>↓ Tải tranh</a>
                     <button className="coloring-start-paint" onClick={() => startPainting(selectedArt)}>✎ Tô tranh</button>
                     {selectedArt.generated ? (

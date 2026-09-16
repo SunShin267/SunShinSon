@@ -3,6 +3,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import type { ColoringArt } from "./coloring-arts";
+import { printColoringImage } from "./print-coloring";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; eraser: boolean; points: Point[]; size: number };
@@ -14,6 +15,13 @@ const palette = [
   { color: "#38bdf8", name: "Xanh da trời" }, { color: "#6366f1", name: "Chàm" },
   { color: "#a855f7", name: "Tím" }, { color: "#ec4899", name: "Hồng" },
   { color: "#92400e", name: "Nâu" }, { color: "#111827", name: "Đen" },
+];
+
+const brushPresets = [
+  { label: "Mảnh", size: 14 },
+  { label: "Vừa", size: 28 },
+  { label: "To", size: 46 },
+  { label: "Rất to", size: 68 },
 ];
 
 function drawDot(context: CanvasRenderingContext2D, stroke: Stroke, point: Point) {
@@ -153,20 +161,27 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     redraw();
   }
 
-  function downloadColoredPainting() {
+  function createCompositeCanvas() {
     const image = imageRef.current;
     const paintCanvas = canvasRef.current;
-    if (!image || !paintCanvas || !strokeCount) return;
+    if (!image || !paintCanvas) return null;
     const output = document.createElement("canvas");
     output.width = paintCanvas.width;
     output.height = paintCanvas.height;
     const context = output.getContext("2d");
-    if (!context) return;
+    if (!context) return null;
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, output.width, output.height);
     context.drawImage(image, 0, 0, output.width, output.height);
     context.globalCompositeOperation = "multiply";
     context.drawImage(paintCanvas, 0, 0);
+    return output;
+  }
+
+  function downloadColoredPainting() {
+    if (!strokeCount) return;
+    const output = createCompositeCanvas();
+    if (!output) return;
     output.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -176,6 +191,12 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     }, "image/png");
+  }
+
+  function printPainting() {
+    const output = createCompositeCanvas();
+    if (!output) return;
+    printColoringImage(output.toDataURL("image/png"), art.title);
   }
 
   const cursorDiameter = Math.max(6, brushSize * brushCursor.scale);
@@ -225,6 +246,26 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
               onClick={() => { setColor(item.color); setIsEraser(false); }} aria-label={`Màu ${item.name}`} title={item.name} />
           ))}
         </div>
+        <div className="coloring-brush-presets" role="group" aria-label="Chọn nhanh cỡ bút">
+          {brushPresets.map((preset) => {
+            const dotSize = Math.max(7, Math.round(preset.size * 0.34));
+            return (
+              <button
+                key={preset.size}
+                className={brushSize === preset.size ? "is-active" : ""}
+                onClick={() => setBrushSize(preset.size)}
+                aria-pressed={brushSize === preset.size}
+              >
+                <span
+                  className="coloring-brush-preset-dot"
+                  style={{ width: dotSize, height: dotSize, backgroundColor: isEraser ? "#fff" : color }}
+                  aria-hidden="true"
+                />
+                <span>{preset.label}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="coloring-tool-row">
           <button className={!isEraser ? "is-active" : ""} onClick={() => setIsEraser(false)}>✎ Bút màu</button>
           <button className={isEraser ? "is-active" : ""} onClick={() => setIsEraser(true)}>▱ Tẩy</button>
@@ -240,7 +281,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       </div>
 
       <div className="coloring-preview-actions coloring-paint-actions">
-        <button onClick={() => window.print()}>⌁ In tranh</button>
+        <button onClick={printPainting}>⌁ In tranh</button>
         <button className="coloring-download-painted" onClick={downloadColoredPainting} disabled={!strokeCount}>↓ Tải tranh đã tô</button>
       </div>
     </>
