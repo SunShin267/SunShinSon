@@ -6,6 +6,7 @@ import { SunLogo } from "../components/SunLogo";
 import { readChildName } from "../lib/child-session";
 import { navigateInternal } from "../lib/navigation";
 import { readVersionedStorage, writeVersionedStorage } from "../lib/versioned-storage";
+import { ColoringCanvas } from "./ColoringCanvas";
 import {
   addSavedColoringArt,
   isSavedColoringCollection,
@@ -21,7 +22,6 @@ import {
   suggestions,
   type ColoringArt,
 } from "./coloring-arts";
-import { savePaintingSession } from "./painting-session";
 import { printColoringImage } from "./print-coloring";
 import "./to-mau.css";
 
@@ -83,6 +83,7 @@ export default function ColoringPage() {
   const [activeTheme, setActiveTheme] = useState("Tất cả");
   const [generationNotice, setGenerationNotice] = useState("");
   const [savedArts, setSavedArts] = useState<SavedColoringArt[]>([]);
+  const [artModalMode, setArtModalMode] = useState<"preview" | "paint" | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -100,6 +101,20 @@ export default function ColoringPage() {
     return () => { isActive = false; };
   }, []);
 
+  useEffect(() => {
+    if (!artModalMode) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setArtModalMode(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [artModalMode]);
+
   async function draw() {
     if (!prompt.trim() || isDrawing) return;
     setIsDrawing(true);
@@ -114,7 +129,7 @@ export default function ColoringPage() {
       const payload = await response.json() as ColoringApiResponse;
       if (!response.ok || !payload.image) throw new Error(payload.error?.message || "AI unavailable");
 
-      setSelectedArt({
+      const generatedArt: ColoringArt = {
         id: `sun-ai-${Date.now()}`,
         title: prompt.trim(),
         prompt: prompt.trim(),
@@ -122,10 +137,13 @@ export default function ColoringPage() {
         icon: "✨",
         theme: "Tranh AI",
         generated: true,
-      });
+      };
+      setSelectedArt(generatedArt);
+      setArtModalMode("preview");
       setGenerationNotice("Sun vừa vẽ riêng một bức tranh mới từ ý tưởng của bé!");
     } catch {
       setSelectedArt(chooseFallbackArt(prompt));
+      setArtModalMode("preview");
       setGenerationNotice("Xưởng vẽ AI đang nghỉ một chút, Sun đã chọn một tranh mẫu gần nhất để bé vẫn có thể tô ngay.");
     } finally {
       setIsDrawing(false);
@@ -136,7 +154,7 @@ export default function ColoringPage() {
     setPrompt(art.prompt);
     setSelectedArt(art);
     setGenerationNotice("");
-    document.getElementById("ve")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setArtModalMode("preview");
   }
 
   async function importLocalArt(event: ChangeEvent<HTMLInputElement>) {
@@ -158,8 +176,8 @@ export default function ColoringPage() {
       };
       setPrompt(fileTitle);
       setSelectedArt(importedArt);
+      setArtModalMode("preview");
       setGenerationNotice("Đã nhập tranh từ máy. Bé có thể in, tô hoặc lưu tranh vào “Mẫu của bé”!");
-      document.getElementById("ve")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       setGenerationNotice(error instanceof Error && error.message === "too-large"
         ? "Ảnh lớn hơn 10 MB. Ba mẹ hãy chọn một ảnh nhỏ hơn nhé."
@@ -203,8 +221,8 @@ export default function ColoringPage() {
   }
 
   function startPainting(art: ColoringArt) {
-    savePaintingSession(art);
-    navigateInternal(`/to-mau/to/${encodeURIComponent(art.id)}`);
+    setSelectedArt(art);
+    setArtModalMode("paint");
   }
 
   const allArts: ColoringArt[] = [...savedArts, ...coloringArts];
@@ -336,6 +354,53 @@ export default function ColoringPage() {
       </main>
 
       <footer className="coloring-footer"><SunLogo compact /><p>Mỗi nét màu là một câu chuyện nhỏ · SunShinSon</p></footer>
+
+      {selectedArt && artModalMode ? (
+        <div
+          className="coloring-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setArtModalMode(null);
+          }}
+        >
+          <section
+            className={`coloring-art-modal ${artModalMode === "paint" ? "is-painting" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="coloring-modal-title"
+          >
+            <header className="coloring-modal-header">
+              <div>
+                <small>{artModalMode === "paint" ? "Xưởng tô màu" : "Xem tranh"}</small>
+                <h2 id="coloring-modal-title">{selectedArt.title}</h2>
+              </div>
+              <button onClick={() => setArtModalMode(null)} aria-label="Đóng cửa sổ tranh">×</button>
+            </header>
+
+            {artModalMode === "preview" ? (
+              <div className="coloring-modal-preview">
+                <div className="coloring-paper coloring-view-paper">
+                  <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
+                  <div className="coloring-view-image"><img src={selectedArt.src} alt={selectedArt.title} /></div>
+                  <p>{selectedArt.title}</p>
+                </div>
+                <div className="coloring-preview-actions">
+                  <button onClick={() => printColoringImage(selectedArt.src, selectedArt.title)}>⌁ In tranh</button>
+                  <a href={selectedArt.src} download={`${selectedArt.id}-sunshinson.${coloringDownloadExtension(selectedArt.src)}`}>↓ Tải tranh</a>
+                  <button className="coloring-start-paint" onClick={() => startPainting(selectedArt)}>✎ Tô tranh</button>
+                  {selectedArt.generated ? (
+                    <button className="coloring-save" onClick={saveSelectedArt} disabled={selectedIsSaved}>{selectedIsSaved ? "✓ Đã lưu" : "♡ Lưu vào mẫu"}</button>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="coloring-modal-paint-body">
+                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} />
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

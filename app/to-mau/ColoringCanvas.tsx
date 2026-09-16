@@ -66,6 +66,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(28);
   const [isEraser, setIsEraser] = useState(false);
+  const [isPanMode, setIsPanMode] = useState(false);
+  const [zoom, setZoom] = useState(100);
   const [strokeCount, setStrokeCount] = useState(0);
   const [brushCursor, setBrushCursor] = useState<BrushCursor>({ x: 0, y: 0, scale: 1, visible: false });
 
@@ -87,6 +89,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     activeStrokeRef.current = null;
     activePointerRef.current = null;
     setStrokeCount(0);
+    setIsPanMode(false);
+    setZoom(100);
     redraw();
   }
 
@@ -113,6 +117,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function startStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (isPanMode) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     updateBrushCursor(event);
@@ -126,6 +131,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function continueStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (isPanMode) return;
     updateBrushCursor(event);
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
@@ -138,6 +144,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function finishStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (isPanMode) return;
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
@@ -202,44 +209,62 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const cursorDiameter = Math.max(6, brushSize * brushCursor.scale);
   const previewDiameter = Math.max(8, Math.round(brushSize * 0.48));
 
+  function updateZoom(nextZoom: number) {
+    setZoom(Math.min(250, Math.max(100, nextZoom)));
+  }
+
   return (
     <>
-      <div className="coloring-paper">
-        <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
-        <div className="coloring-canvas-wrap">
-          <img ref={imageRef} src={art.src} alt={art.title} onLoad={prepareCanvas} draggable={false} />
-          <canvas
-            ref={canvasRef}
-            className={isEraser ? "is-erasing" : ""}
-            onPointerEnter={updateBrushCursor}
-            onPointerDown={startStroke}
-            onPointerMove={continueStroke}
-            onPointerUp={finishStroke}
-            onPointerCancel={finishStroke}
-            onPointerLeave={() => {
-              if (activePointerRef.current === null) setBrushCursor((cursor) => ({ ...cursor, visible: false }));
-            }}
-            aria-label={`Vùng tô màu cho tranh ${art.title}`}
-          />
-          <span
-            aria-hidden="true"
-            className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
-            style={{
-              backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
-              borderColor: isEraser ? "#2e261e" : color,
-              height: cursorDiameter,
-              left: brushCursor.x,
-              opacity: brushCursor.visible ? 1 : 0,
-              top: brushCursor.y,
-              width: cursorDiameter,
-            }}
-          />
+      <div className={`coloring-paint-stage ${isPanMode ? "is-pan-mode" : ""}`}>
+        <div className="coloring-paper" style={{ width: `${zoom}%`, maxWidth: "none" }}>
+          <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
+          <div className="coloring-canvas-wrap">
+            <img ref={imageRef} src={art.src} alt={art.title} onLoad={prepareCanvas} draggable={false} />
+            <canvas
+              ref={canvasRef}
+              className={`${isEraser ? "is-erasing" : ""} ${isPanMode ? "is-panning" : ""}`}
+              onPointerEnter={updateBrushCursor}
+              onPointerDown={startStroke}
+              onPointerMove={continueStroke}
+              onPointerUp={finishStroke}
+              onPointerCancel={finishStroke}
+              onPointerLeave={() => {
+                if (activePointerRef.current === null) setBrushCursor((cursor) => ({ ...cursor, visible: false }));
+              }}
+              aria-label={`Vùng tô màu cho tranh ${art.title}`}
+            />
+            <span
+              aria-hidden="true"
+              className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
+              style={{
+                backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
+                borderColor: isEraser ? "#2e261e" : color,
+                height: cursorDiameter,
+                left: brushCursor.x,
+                opacity: brushCursor.visible && !isPanMode ? 1 : 0,
+                top: brushCursor.y,
+                width: cursorDiameter,
+              }}
+            />
+          </div>
+          <p>{art.title}</p>
         </div>
-        <p>{art.title}</p>
       </div>
 
       <div className="coloring-paint-tools">
         <div className="coloring-paint-heading"><strong>🎨 Hộp màu của bé</strong><span>Chạm hoặc kéo chuột trên tranh</span></div>
+        <div className="coloring-zoom-tools" role="group" aria-label="Thu phóng và di chuyển tranh">
+          <button onClick={() => updateZoom(zoom - 25)} disabled={zoom <= 100} aria-label="Thu nhỏ tranh">−</button>
+          <label>
+            <span>Thu phóng</span>
+            <input type="range" min="100" max="250" step="25" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} aria-label="Mức thu phóng tranh" />
+          </label>
+          <output aria-live="polite">{zoom}%</output>
+          <button onClick={() => updateZoom(zoom + 25)} disabled={zoom >= 250} aria-label="Phóng to tranh">＋</button>
+          <button className={isPanMode ? "is-active" : ""} onClick={() => setIsPanMode((value) => !value)} aria-pressed={isPanMode}>
+            {isPanMode ? "✎ Tô tiếp" : "✥ Di chuyển"}
+          </button>
+        </div>
         <div className="coloring-palette" role="group" aria-label="Chọn màu vẽ">
           {palette.map((item) => (
             <button key={item.color} className={color === item.color && !isEraser ? "is-active" : ""} style={{ backgroundColor: item.color }}

@@ -28,7 +28,10 @@ test("generates an image through the Workers AI binding", async () => {
     AI: {
       async run(model, input) {
         calls.push({ model, input });
-        if (model === "@cf/meta/llama-3.1-8b-instruct-fast") {
+        if (model === "@cf/zai-org/glm-4.7-flash") {
+          assert.match(input.messages[0].content, /Vietnamese cultural context/);
+          assert.match(input.messages[0].content, /Do not omit, merge, invent/);
+          assert.equal(input.messages[1].content, "Vietnamese idea: thỏ con trong vườn hoa");
           return { response: "a baby rabbit in a flower garden" };
         }
         assert.equal(model, "@cf/black-forest-labs/flux-1-schnell");
@@ -119,7 +122,7 @@ test("falls back to Pollinations when Cloudflare Workers AI fails", async () => 
     });
     const response = await handleColoringApiRequest(request, {
       AI: { async run(model) {
-        if (model === "@cf/meta/llama-3.1-8b-instruct-fast") return { response: "a bear reading under a tree" };
+        if (model === "@cf/zai-org/glm-4.7-flash") return { response: "a bear reading under a tree" };
         throw Object.assign(new Error("quota exceeded"), { status: 429 });
       } },
       POLLINATIONS_API_KEY: "pollinations-test-key",

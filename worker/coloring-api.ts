@@ -5,7 +5,7 @@ const COLORING_API_PATH = "/api/coloring/generate";
 const COLORING_INTERNAL_API_PATH = "/api/internal/coloring/generate";
 const COLORING_INTERNAL_TRANSLATE_PATH = "/api/internal/coloring/translate";
 const COLORING_MODEL = "@cf/black-forest-labs/flux-1-schnell";
-const TRANSLATION_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const TRANSLATION_MODEL = "@cf/zai-org/glm-4.7-flash";
 const POLLINATIONS_API_URL = "https://gen.pollinations.ai/v1/images/generations";
 const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/completions";
 const POLLINATIONS_DEFAULT_MODEL = "flux";
@@ -59,9 +59,23 @@ function buildTranslationMessages(idea: string) {
   return [
     {
       role: "system",
-      content: "Translate children's drawing ideas into concise natural English. Preserve every subject and action. Output only the English translation, with no quotation marks, explanation, prefix, or added detail.",
+      content: [
+        "You are a Vietnamese children's illustration scene interpreter, not a literal word-for-word translator.",
+        "Convert the child's Vietnamese idea into one precise, concrete English scene brief for an image generator.",
+        "Preserve exactly: the number of people or animals, their age or family relationship, proper names, appearance, clothing, action, position, emotion, objects, setting, time, and Vietnamese cultural context.",
+        "Resolve Vietnamese classifiers and pronouns from context. Do not replace Vietnamese cultural objects or places with Western equivalents; translate them clearly, for example nón lá as Vietnamese conical hat, áo dài as Vietnamese ao dai dress, and làng quê Việt Nam as Vietnamese countryside village.",
+        "Do not omit, merge, invent, or generalize subjects. If the child names multiple characters, keep every character and name.",
+        "Return only one detailed English scene description. Do not include quotation marks, headings, explanations, style instructions, safety notes, or coloring-book instructions.",
+        "Examples:",
+        "Vietnamese: ba anh em Sun, Shin và Son mặc áo siêu nhân bay trên làng quê Việt Nam",
+        "English: Three sibling superheroes named Sun, Shin, and Son, each wearing a superhero suit, flying together above a Vietnamese countryside village with rice fields and tiled-roof houses.",
+        "Vietnamese: bé gái đội nón lá dắt trâu đi qua cánh đồng lúa",
+        "English: A little girl wearing a Vietnamese conical hat leads a water buffalo through a rice field.",
+        "Vietnamese: hai chú mèo con ngồi trong giỏ xe đạp của bà",
+        "English: Exactly two kittens sit together in the front basket of their grandmother's bicycle.",
+      ].join(" "),
     },
-    { role: "user", content: idea },
+    { role: "user", content: `Vietnamese idea: ${idea}` },
   ];
 }
 
@@ -71,14 +85,14 @@ function cleanEnglishTranslation(value: unknown): string {
     .replace(/^(?:english translation|translation|english)\s*:\s*/i, "")
     .replace(/^["'“”]+|["'“”]+$/g, "")
     .trim()
-    .slice(0, 320);
+    .slice(0, 600);
 }
 
 async function translateWithBinding(env: Env, idea: string): Promise<string | null> {
   if (!env.AI) return null;
   const result = await env.AI.run(TRANSLATION_MODEL, {
     messages: buildTranslationMessages(idea),
-    max_tokens: 120,
+    max_tokens: 220,
     temperature: 0,
   });
   const response = result && typeof result === "object" ? (result as WorkersAiText).response : null;
@@ -95,7 +109,7 @@ async function translateWithRestApi(env: Env, idea: string): Promise<string | nu
     {
       method: "POST",
       headers: { authorization: `Bearer ${apiToken}`, "content-type": "application/json" },
-      body: JSON.stringify({ messages: buildTranslationMessages(idea), max_tokens: 120, temperature: 0 }),
+      body: JSON.stringify({ messages: buildTranslationMessages(idea), max_tokens: 220, temperature: 0 }),
       signal: AbortSignal.timeout(20_000),
     },
   );
@@ -131,7 +145,7 @@ async function translateWithPollinations(env: Env, idea: string): Promise<string
       model: env.POLLINATIONS_TEXT_MODEL?.trim() || POLLINATIONS_DEFAULT_TEXT_MODEL,
       messages: buildTranslationMessages(idea),
       temperature: 0,
-      max_tokens: 120,
+      max_tokens: 220,
     }),
     signal: AbortSignal.timeout(30_000),
   });
