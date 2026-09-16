@@ -13,6 +13,7 @@ export interface Env {
   COLORING_AI_PROXY_SECRET?: string;
   POLLINATIONS_API_KEY?: string;
   POLLINATIONS_IMAGE_MODEL?: string;
+  POLLINATIONS_TEXT_MODEL?: string;
   IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

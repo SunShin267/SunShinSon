@@ -3,9 +3,13 @@ import { errorResponse, jsonResponse } from "./http.ts";
 
 const COLORING_API_PATH = "/api/coloring/generate";
 const COLORING_INTERNAL_API_PATH = "/api/internal/coloring/generate";
+const COLORING_INTERNAL_TRANSLATE_PATH = "/api/internal/coloring/translate";
 const COLORING_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+const TRANSLATION_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 const POLLINATIONS_API_URL = "https://gen.pollinations.ai/v1/images/generations";
+const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/completions";
 const POLLINATIONS_DEFAULT_MODEL = "flux";
+const POLLINATIONS_DEFAULT_TEXT_MODEL = "openai";
 const MAX_PROMPT_LENGTH = 160;
 
 type ColoringRequestBody = {
@@ -14,6 +18,10 @@ type ColoringRequestBody = {
 
 type WorkersAiImage = {
   image?: unknown;
+};
+
+type WorkersAiText = {
+  response?: unknown;
 };
 
 type GeneratedImage = {
@@ -37,13 +45,120 @@ export function normalizeColoringPrompt(value: unknown): string {
 
 export function buildColoringPrompt(idea: string): string {
   return [
-    "Create one printable children's coloring book page based on this idea:",
-    `\"${idea}\".`,
-    "Use pure white background and bold, smooth, clean black outlines only.",
-    "Use large closed shapes, generous empty areas, and simple cheerful details suitable for children ages 4 to 8.",
-    "Centered square composition that can be printed on A4 paper.",
-    "No color, no gray, no shading, no gradients, no text, no letters, no names, no logo, no watermark, no scary details, no weapons.",
+    "BLACK-AND-WHITE COLORING BOOK LINE ART ONLY. This must be an uncolored printable outline page, not a finished illustration.",
+    `Subject: \"${idea}\".`,
+    "Draw the subject with bold, smooth, consistent pure-black contour lines on a completely pure-white background.",
+    "Keep every shape interior white and unfilled. Use large closed shapes, wide open coloring spaces, minimal details, and a cheerful child-friendly style for ages 4 to 8.",
+    "Use one centered square composition with comfortable white margins, suitable for printing on A4 paper.",
+    "STRICTLY FORBIDDEN: any color, colored pixels, gray, grayscale, filled black areas, shading, shadows, gradients, lighting effects, textures, hatching, photorealism, paint, text, letters, names, logos, watermarks, scary details, or weapons.",
+    "Final result must look like clean black ink outlines on blank white coloring-book paper, ready for a child to color in.",
   ].join(" ");
+}
+
+function buildTranslationMessages(idea: string) {
+  return [
+    {
+      role: "system",
+      content: "Translate children's drawing ideas into concise natural English. Preserve every subject and action. Output only the English translation, with no quotation marks, explanation, prefix, or added detail.",
+    },
+    { role: "user", content: idea },
+  ];
+}
+
+function cleanEnglishTranslation(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return normalizeColoringPrompt(value)
+    .replace(/^(?:english translation|translation|english)\s*:\s*/i, "")
+    .replace(/^["'“”]+|["'“”]+$/g, "")
+    .trim()
+    .slice(0, 320);
+}
+
+async function translateWithBinding(env: Env, idea: string): Promise<string | null> {
+  if (!env.AI) return null;
+  const result = await env.AI.run(TRANSLATION_MODEL, {
+    messages: buildTranslationMessages(idea),
+    max_tokens: 120,
+    temperature: 0,
+  });
+  const response = result && typeof result === "object" ? (result as WorkersAiText).response : null;
+  return cleanEnglishTranslation(response) || null;
+}
+
+async function translateWithRestApi(env: Env, idea: string): Promise<string | null> {
+  const accountId = env.CLOUDFLARE_AI_ACCOUNT_ID?.trim();
+  const apiToken = env.CLOUDFLARE_AI_API_TOKEN?.trim();
+  if (!accountId || !apiToken) return null;
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${TRANSLATION_MODEL}`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ messages: buildTranslationMessages(idea), max_tokens: 120, temperature: 0 }),
+      signal: AbortSignal.timeout(20_000),
+    },
+  );
+  if (!response.ok) throw Object.assign(new Error(`Translation API returned ${response.status}`), { status: response.status });
+  const payload = await response.json() as { result?: WorkersAiText };
+  return cleanEnglishTranslation(payload.result?.response) || null;
+}
+
+async function translateWithProxy(env: Env, idea: string): Promise<string | null> {
+  const proxyUrl = env.COLORING_AI_PROXY_URL?.trim().replace(/\/$/, "");
+  const proxySecret = env.COLORING_AI_PROXY_SECRET?.trim();
+  if (!proxyUrl || !proxySecret) return null;
+
+  const response = await fetch(`${proxyUrl}${COLORING_INTERNAL_TRANSLATE_PATH}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-coloring-proxy-secret": proxySecret },
+    body: JSON.stringify({ prompt: idea }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw Object.assign(new Error(`Translation proxy returned ${response.status}`), { status: response.status });
+  const payload = await response.json() as { translation?: unknown };
+  return cleanEnglishTranslation(payload.translation) || null;
+}
+
+async function translateWithPollinations(env: Env, idea: string): Promise<string | null> {
+  const apiKey = env.POLLINATIONS_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const response = await fetch(POLLINATIONS_TEXT_API_URL, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: env.POLLINATIONS_TEXT_MODEL?.trim() || POLLINATIONS_DEFAULT_TEXT_MODEL,
+      messages: buildTranslationMessages(idea),
+      temperature: 0,
+      max_tokens: 120,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw Object.assign(new Error(`Pollinations translation returned ${response.status}`), { status: response.status });
+  const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+  return cleanEnglishTranslation(payload.choices?.[0]?.message?.content) || null;
+}
+
+export async function translateColoringIdeaToEnglish(env: Env, idea: string): Promise<string> {
+  const translators = [
+    () => translateWithBinding(env, idea),
+    () => translateWithProxy(env, idea),
+    () => translateWithRestApi(env, idea),
+    () => translateWithPollinations(env, idea),
+  ];
+  let lastError: unknown;
+
+  for (const translate of translators) {
+    try {
+      const result = await translate();
+      if (result) return result;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("No translation provider is configured");
 }
 
 function imageFromResult(result: unknown): string | null {
@@ -227,9 +342,43 @@ async function handleInternalColoringRequest(request: Request, env: Env): Promis
   }
 }
 
+async function handleInternalTranslationRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return errorResponse(405, "METHOD_NOT_ALLOWED", "Method not allowed.", undefined, { allow: "POST" });
+  }
+
+  const expectedSecret = env.COLORING_AI_PROXY_SECRET?.trim();
+  const providedSecret = request.headers.get("x-coloring-proxy-secret")?.trim();
+  if (!expectedSecret || !providedSecret || expectedSecret !== providedSecret) {
+    return errorResponse(401, "UNAUTHORIZED", "Unauthorized.");
+  }
+
+  let body: ColoringRequestBody;
+  try {
+    body = await request.json() as ColoringRequestBody;
+  } catch {
+    return errorResponse(400, "INVALID_JSON", "Invalid request.");
+  }
+
+  const idea = normalizeColoringPrompt(body.prompt);
+  if (idea.length < 3 || idea.length > MAX_PROMPT_LENGTH || !env.AI) {
+    return errorResponse(503, "AI_UNAVAILABLE", "Translation provider unavailable.");
+  }
+
+  try {
+    const translation = await translateWithBinding(env, idea);
+    return translation
+      ? jsonResponse({ translation }, 200, { "cache-control": "no-store" })
+      : errorResponse(502, "AI_EMPTY_RESULT", "Translation provider returned no text.");
+  } catch {
+    return errorResponse(502, "AI_TRANSLATION_FAILED", "Translation provider failed.");
+  }
+}
+
 export async function handleColoringApiRequest(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === COLORING_INTERNAL_API_PATH) return handleInternalColoringRequest(request, env);
+  if (url.pathname === COLORING_INTERNAL_TRANSLATE_PATH) return handleInternalTranslationRequest(request, env);
   if (url.pathname !== COLORING_API_PATH) return null;
 
   if (request.method !== "POST") {
@@ -262,7 +411,8 @@ export async function handleColoringApiRequest(request: Request, env: Env): Prom
   }
 
   try {
-    const generatedPrompt = buildColoringPrompt(idea);
+    const englishIdea = await translateColoringIdeaToEnglish(env, idea);
+    const generatedPrompt = buildColoringPrompt(englishIdea);
     const result = await generateWithFallback(env, generatedPrompt);
     if (!result) {
       return errorResponse(503, "AI_NOT_CONFIGURED", "Sun đang dùng thư viện tranh mẫu trong lúc chờ kết nối xưởng vẽ AI.");
