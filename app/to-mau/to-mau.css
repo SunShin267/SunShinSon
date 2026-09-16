@@ -88,12 +88,13 @@
 .coloring-brush-cursor { position: absolute; z-index: 2; border: 2px solid; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); transition: width .08s, height .08s, opacity .08s; box-shadow: 0 0 0 1px rgba(255,255,255,.82); }
 .coloring-brush-cursor.is-eraser { border-style: dashed; box-shadow: 0 0 0 1px rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.9); }
 .coloring-paper > p { margin: 6px 0 0; text-align: center; font-size: 11px; font-weight: 900; }
-.coloring-paint-stage { width: min(100%, 680px); max-height: min(68vh, 760px); overflow: auto; padding: 10px; border: 1px solid #cfc5b7; border-radius: 16px; background: #e9e1d5; box-sizing: border-box; overscroll-behavior: contain; touch-action: pan-x pan-y; }
-.coloring-zoom-surface { min-width: 50%; margin: 0 auto; transition: width .18s ease; }
+.coloring-paint-stage { position: relative; width: min(100%, 680px); height: min(68vh, 760px); overflow: hidden; padding: 10px; border: 1px solid #cfc5b7; border-radius: 16px; background: #e9e1d5; box-sizing: border-box; overscroll-behavior: contain; touch-action: none; }
+.coloring-zoom-surface { width: 100%; transform-origin: 0 0; will-change: transform; }
 .coloring-paint-stage .coloring-paper { width: 100%; min-width: 100%; max-width: none; max-height: none; margin: 0 auto; box-sizing: border-box; }
-.coloring-paint-stage.is-pan-mode { cursor: grab; touch-action: none; user-select: none; }
+.coloring-paint-stage.is-pan-mode { cursor: grab; user-select: none; }
 .coloring-paint-stage.is-pan-mode .coloring-canvas-wrap { cursor: grab; }
 .coloring-paint-stage.is-dragging, .coloring-paint-stage.is-dragging .coloring-canvas-wrap { cursor: grabbing; }
+.coloring-paint-stage.is-pinching .coloring-zoom-surface { will-change: transform; }
 .coloring-fill-loading { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 9px; background: rgba(255,255,255,.7); color: var(--coloring-ink); font-size: 11px; font-weight: 1000; backdrop-filter: blur(2px); }
 .coloring-fill-loading span { width: 22px; height: 22px; border: 3px solid #e4d7bd; border-top-color: var(--coloring-orange); border-radius: 50%; animation: coloring-spin .7s linear infinite; }
 @keyframes coloring-spin { to { transform: rotate(360deg); } }
@@ -202,7 +203,7 @@
 .coloring-modal-preview .coloring-paper { width: min(100%, 680px); max-height: calc(100svh - 180px); }
 .coloring-modal-paint-body { min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; overflow: auto; padding: 14px; background: #f6d777; }
 .coloring-modal-paint-body .coloring-paint-stage, .coloring-modal-paint-body .coloring-paint-tools { width: min(100%, 780px); }
-.coloring-modal-paint-body .coloring-paint-stage { max-height: calc(100svh - 330px); }
+.coloring-modal-paint-body .coloring-paint-stage { height: calc(100svh - 330px); max-height: none; }
 
 .coloring-page button:focus-visible, .coloring-page a:focus-visible, .coloring-page textarea:focus-visible { outline: 4px solid #7aa5ff; outline-offset: 3px; }
 
@@ -252,7 +253,7 @@
   .coloring-modal-preview { padding: 10px; }
   .coloring-modal-preview .coloring-paper { max-height: calc(100svh - 145px); padding: 11px 12px 9px; }
   .coloring-modal-paint-body { padding: 8px; }
-  .coloring-modal-paint-body .coloring-paint-stage { min-height: 245px; max-height: calc(100svh - 390px); padding: 6px; }
+  .coloring-modal-paint-body .coloring-paint-stage { height: max(245px, calc(100svh - 410px)); min-height: 245px; max-height: none; padding: 6px; }
   .coloring-modal-paint-body .coloring-paint-tools { padding: 9px 7px; }
   .coloring-zoom-tools { flex-wrap: wrap; }
   .coloring-zoom-tools label { min-width: 130px; }
@@ -272,12 +273,12 @@
   .coloring-paper { box-sizing: border-box !important; width: 194mm !important; height: auto !important; max-width: 194mm !important; max-height: 281mm !important; margin: 0 auto !important; border: 0 !important; box-shadow: none !important; break-inside: avoid !important; page-break-inside: avoid !important; }
   .coloring-preview-actions, .coloring-paint-tools { display: none !important; }
   .coloring-brush-cursor { display: none !important; }
-  .coloring-paint-stage { width: 100% !important; max-height: none !important; overflow: visible !important; padding: 0 !important; border: 0 !important; background: #fff !important; }
+  .coloring-paint-stage { width: 100% !important; height: auto !important; max-height: none !important; overflow: visible !important; padding: 0 !important; border: 0 !important; background: #fff !important; }
   .coloring-modal-backdrop { position: static !important; display: block !important; padding: 0 !important; background: #fff !important; }
   .coloring-art-modal { width: 100% !important; max-height: none !important; border: 0 !important; box-shadow: none !important; }
   .coloring-modal-header { display: none !important; }
   .coloring-modal-paint-body { padding: 0 !important; overflow: visible !important; background: #fff !important; }
-  .coloring-zoom-surface { width: 100% !important; }
+  .coloring-zoom-surface { width: 100% !important; transform: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

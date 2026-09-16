@@ -192,7 +192,7 @@ export class CanvasManager {
     return context;
   }
 
-  private redraw() {
+  redraw() {
     const context = this.context();
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.commands.forEach((command) => command.apply(context));

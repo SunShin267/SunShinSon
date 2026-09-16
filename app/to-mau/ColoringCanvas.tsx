@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 
+import { CanvasViewportController, canvasPointFromClient, type ViewTransform } from "./canvas-viewport";
 import type { ColoringArt } from "./coloring-arts";
 import {
   BucketFillTool,
@@ -15,7 +16,14 @@ import { printColoringImage } from "./print-coloring";
 
 type BrushCursor = { x: number; y: number; scale: number; visible: boolean };
 type Tool = "brush" | "bucket" | "eraser";
-type PanGesture = { pointerId: number; scrollLeft: number; scrollTop: number; x: number; y: number };
+type PanGesture = { pointerId: number; start: ViewTransform; x: number; y: number };
+type TouchPoint = { x: number; y: number };
+type PinchGesture = {
+  pointerIds: [number, number];
+  startCenter: TouchPoint;
+  startDistance: number;
+  startTransform: ViewTransform;
+};
 
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
@@ -34,19 +42,34 @@ const brushPresets = [
 
 const emptyHistory: HistoryState = { canRedo: false, canUndo: false, count: 0 };
 
+function distanceBetween(first: TouchPoint, second: TouchPoint) {
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function midpoint(first: TouchPoint, second: TouchPoint): TouchPoint {
+  return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+}
+
 export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const viewportContentRef = useRef<HTMLDivElement>(null);
+  const viewportControllerRef = useRef<CanvasViewportController | null>(null);
   const managerRef = useRef<CanvasManager | null>(null);
   const activeStrokeRef = useRef<StrokeData | null>(null);
   const activePointerRef = useRef<number | null>(null);
   const panGestureRef = useRef<PanGesture | null>(null);
+  const touchPointsRef = useRef(new Map<number, TouchPoint>());
+  const pinchGestureRef = useRef<PinchGesture | null>(null);
+  const zoomFrameRef = useRef<number | null>(null);
+  const reportedScaleRef = useRef(1);
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(28);
   const [tool, setTool] = useState<Tool>("brush");
   const [isPanMode, setIsPanMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
   const [fillMessage, setFillMessage] = useState("");
   const [tolerance, setTolerance] = useState(32);
@@ -56,6 +79,31 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
 
   const isEraser = tool === "eraser";
   const isBucket = tool === "bucket";
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    const content = viewportContentRef.current;
+    if (!stage || !content) return;
+
+    const reportTransform = (state: ViewTransform) => {
+      reportedScaleRef.current = state.scale;
+      if (zoomFrameRef.current !== null) return;
+      zoomFrameRef.current = requestAnimationFrame(() => {
+        zoomFrameRef.current = null;
+        setZoom(Math.round(reportedScaleRef.current * 100));
+      });
+    };
+    const controller = new CanvasViewportController(stage, content, reportTransform);
+    viewportControllerRef.current = controller;
+    const observer = new ResizeObserver(() => controller.refreshBounds());
+    observer.observe(stage);
+    observer.observe(content);
+    return () => {
+      observer.disconnect();
+      if (zoomFrameRef.current !== null) cancelAnimationFrame(zoomFrameRef.current);
+      viewportControllerRef.current = null;
+    };
+  }, []);
 
   function prepareCanvas() {
     const image = imageRef.current;
@@ -67,20 +115,24 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     activeStrokeRef.current = null;
     activePointerRef.current = null;
     panGestureRef.current = null;
+    touchPointsRef.current.clear();
+    pinchGestureRef.current = null;
     setHistory(emptyHistory);
     setIsPanMode(false);
     setIsDragging(false);
-    setZoom(100);
+    setIsPinching(false);
+    requestAnimationFrame(() => viewportControllerRef.current?.reset());
   }
 
   function pointFromEvent(event: ReactPointerEvent<HTMLCanvasElement>): CanvasPoint {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) * (canvas.width / rect.width),
-      y: (event.clientY - rect.top) * (canvas.height / rect.height),
-    };
+    return canvasPointFromClient(
+      { x: event.clientX, y: event.clientY },
+      rect,
+      { width: canvas.width, height: canvas.height },
+    );
   }
 
   function updateBrushCursor(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -93,6 +145,20 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       scale: canvas.width ? rect.width / canvas.width : 1,
       visible: event.pointerType !== "touch",
     });
+  }
+
+  function stagePoint(clientX: number, clientY: number): TouchPoint {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? { x: clientX - rect.left, y: clientY - rect.top } : { x: clientX, y: clientY };
+  }
+
+  function cancelActiveStroke() {
+    const canvas = canvasRef.current;
+    const pointerId = activePointerRef.current;
+    if (canvas && pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    activeStrokeRef.current = null;
+    activePointerRef.current = null;
+    managerRef.current?.redraw();
   }
 
   async function fillAt(point: CanvasPoint) {
@@ -116,7 +182,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function startStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode || isFilling) return;
+    if (isPanMode || isFilling || pinchGestureRef.current) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     updateBrushCursor(event);
@@ -134,7 +200,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function continueStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode || isBucket) return;
+    if (isPanMode || isBucket || pinchGestureRef.current) return;
     updateBrushCursor(event);
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
@@ -158,7 +224,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function finishStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode || isBucket) return;
+    if (isPanMode || isBucket || pinchGestureRef.current) return;
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
@@ -169,30 +235,100 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function updateZoom(nextZoom: number) {
-    const next = Math.min(300, Math.max(50, nextZoom));
     const stage = stageRef.current;
-    const centerX = stage ? stage.scrollLeft + stage.clientWidth / 2 : 0;
-    const centerY = stage ? stage.scrollTop + stage.clientHeight / 2 : 0;
-    const ratio = next / zoom;
-    setZoom(next);
-    if (next > 100 && zoom <= 100) setIsPanMode(true);
-    if (next <= 100) setIsPanMode(false);
-    requestAnimationFrame(() => {
-      if (!stage) return;
-      stage.scrollLeft = centerX * ratio - stage.clientWidth / 2;
-      stage.scrollTop = centerY * ratio - stage.clientHeight / 2;
-    });
+    const controller = viewportControllerRef.current;
+    if (!stage || !controller) return;
+    controller.zoomAt(nextZoom / 100, stage.clientWidth / 2, stage.clientHeight / 2);
+    setIsPanMode(controller.getState().scale > 1);
+  }
+
+  function resetView() {
+    viewportControllerRef.current?.reset();
+    setIsPanMode(false);
+    setIsDragging(false);
+  }
+
+  function zoomWithWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    const controller = viewportControllerRef.current;
+    if (!controller) return;
+    event.preventDefault();
+    const anchor = stagePoint(event.clientX, event.clientY);
+    const sensitivity = event.ctrlKey ? 0.0015 : 0.0032;
+    controller.zoomAt(controller.getState().scale * Math.exp(-event.deltaY * sensitivity), anchor.x, anchor.y);
+    setIsPanMode(controller.getState().scale > 1);
+  }
+
+  function trackTouchStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch") return;
+    touchPointsRef.current.set(event.pointerId, stagePoint(event.clientX, event.clientY));
+    if (touchPointsRef.current.size < 2) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelActiveStroke();
+    panGestureRef.current = null;
+    setIsDragging(false);
+    const entries = Array.from(touchPointsRef.current.entries()).slice(0, 2);
+    const [firstId, first] = entries[0];
+    const [secondId, second] = entries[1];
+    const controller = viewportControllerRef.current;
+    if (!controller) return;
+    for (const pointerId of [firstId, secondId]) {
+      try { event.currentTarget.setPointerCapture(pointerId); } catch { /* Pointer may already have ended. */ }
+    }
+    pinchGestureRef.current = {
+      pointerIds: [firstId, secondId],
+      startCenter: midpoint(first, second),
+      startDistance: Math.max(1, distanceBetween(first, second)),
+      startTransform: controller.getState(),
+    };
+    setIsPinching(true);
+    setIsPanMode(true);
+  }
+
+  function trackTouchMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch" || !touchPointsRef.current.has(event.pointerId)) return;
+    touchPointsRef.current.set(event.pointerId, stagePoint(event.clientX, event.clientY));
+    const pinch = pinchGestureRef.current;
+    if (!pinch) return;
+    const first = touchPointsRef.current.get(pinch.pointerIds[0]);
+    const second = touchPointsRef.current.get(pinch.pointerIds[1]);
+    if (!first || !second) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const controller = viewportControllerRef.current;
+    if (!controller) return;
+    controller.pinchFrom(
+      pinch.startTransform,
+      pinch.startTransform.scale * distanceBetween(first, second) / pinch.startDistance,
+      pinch.startCenter,
+      midpoint(first, second),
+    );
+    setIsPanMode(controller.getState().scale > 1);
+  }
+
+  function trackTouchEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch") return;
+    touchPointsRef.current.delete(event.pointerId);
+    const pinch = pinchGestureRef.current;
+    if (!pinch || !pinch.pointerIds.includes(event.pointerId)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pinchGestureRef.current = null;
+    setIsPinching(false);
+    setIsPanMode((viewportControllerRef.current?.getState().scale ?? 1) > 1);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
   function beginPan(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!isPanMode || zoom <= 100) return;
+    if (!isPanMode || zoom <= 100 || pinchGestureRef.current) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    const controller = viewportControllerRef.current;
+    if (!controller) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     panGestureRef.current = {
       pointerId: event.pointerId,
-      scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
+      start: controller.getState(),
       x: event.clientX,
       y: event.clientY,
     };
@@ -203,8 +339,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const gesture = panGestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     event.preventDefault();
-    event.currentTarget.scrollLeft = gesture.scrollLeft - (event.clientX - gesture.x);
-    event.currentTarget.scrollTop = gesture.scrollTop - (event.clientY - gesture.y);
+    viewportControllerRef.current?.panFrom(gesture.start, event.clientX - gesture.x, event.clientY - gesture.y);
   }
 
   function finishPan(event: ReactPointerEvent<HTMLDivElement>) {
@@ -254,13 +389,19 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     <>
       <div
         ref={stageRef}
-        className={`coloring-paint-stage ${isPanMode ? "is-pan-mode" : ""} ${isDragging ? "is-dragging" : ""}`}
+        className={`coloring-paint-stage ${isPanMode ? "is-pan-mode" : ""} ${isDragging ? "is-dragging" : ""} ${isPinching ? "is-pinching" : ""}`}
+        data-zoom={zoom}
+        onPointerDownCapture={trackTouchStart}
+        onPointerMoveCapture={trackTouchMove}
+        onPointerUpCapture={trackTouchEnd}
+        onPointerCancelCapture={trackTouchEnd}
         onPointerDown={beginPan}
         onPointerMove={movePan}
         onPointerUp={finishPan}
         onPointerCancel={finishPan}
+        onWheel={zoomWithWheel}
       >
-        <div className="coloring-zoom-surface" style={{ width: `${zoom}%` }}>
+        <div ref={viewportContentRef} className="coloring-zoom-surface">
           <div className="coloring-paper">
             <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
             <div className="coloring-canvas-wrap">
@@ -304,15 +445,16 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
           <button onClick={() => updateZoom(zoom - 25)} disabled={zoom <= 50} aria-label="Thu nhỏ tranh">−</button>
           <label>
             <span>Thu phóng</span>
-            <input type="range" min="50" max="300" step="25" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} aria-label="Mức thu phóng tranh" />
+            <input type="range" min="50" max="500" step="1" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} aria-label="Mức thu phóng tranh" />
           </label>
           <output aria-live="polite">{zoom}%</output>
-          <button onClick={() => updateZoom(zoom + 25)} disabled={zoom >= 300} aria-label="Phóng to tranh">＋</button>
+          <button onClick={() => updateZoom(zoom + 25)} disabled={zoom >= 500} aria-label="Phóng to tranh">＋</button>
           <button className={isPanMode ? "is-active" : ""} onClick={() => setIsPanMode((value) => !value)} aria-pressed={isPanMode} disabled={zoom <= 100}>
             {isPanMode ? "✎ Tô tiếp" : "✥ Di chuyển"}
           </button>
+          <button onClick={resetView} disabled={zoom === 100} aria-label="Đặt lại góc nhìn">⟲ Reset View</button>
         </div>
-        {zoom > 100 ? <p className="coloring-pan-tip">Phóng to xong, chọn “Di chuyển”, rồi chạm giữ và kéo tranh.</p> : null}
+        <p className="coloring-pan-tip">Dùng 2 ngón để thu phóng · 1 ngón để kéo khi phóng lớn · lăn chuột trên máy tính</p>
         <div className="coloring-palette" role="group" aria-label="Chọn màu vẽ">
           {palette.map((item) => (
             <button key={item.color} className={color === item.color && !isEraser ? "is-active" : ""} style={{ backgroundColor: item.color }}
