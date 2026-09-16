@@ -3,11 +3,19 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import type { ColoringArt } from "./coloring-arts";
+import {
+  BucketFillTool,
+  CanvasManager,
+  StrokeCommand,
+  type CanvasPoint,
+  type HistoryState,
+  type StrokeData,
+} from "./paint-bucket";
 import { printColoringImage } from "./print-coloring";
 
-type Point = { x: number; y: number };
-type Stroke = { color: string; eraser: boolean; points: Point[]; size: number };
 type BrushCursor = { x: number; y: number; scale: number; visible: boolean };
+type Tool = "brush" | "bucket" | "eraser";
+type PanGesture = { pointerId: number; scrollLeft: number; scrollTop: number; x: number; y: number };
 
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
@@ -24,60 +32,30 @@ const brushPresets = [
   { label: "Rất to", size: 68 },
 ];
 
-function drawDot(context: CanvasRenderingContext2D, stroke: Stroke, point: Point) {
-  context.save();
-  context.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over";
-  context.fillStyle = stroke.color;
-  context.beginPath();
-  context.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
-  context.fill();
-  context.restore();
-}
-
-function drawSegment(context: CanvasRenderingContext2D, stroke: Stroke, from: Point, to: Point) {
-  context.save();
-  context.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over";
-  context.strokeStyle = stroke.color;
-  context.lineWidth = stroke.size;
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.beginPath();
-  context.moveTo(from.x, from.y);
-  context.lineTo(to.x, to.y);
-  context.stroke();
-  context.restore();
-}
-
-function drawWholeStroke(context: CanvasRenderingContext2D, stroke: Stroke) {
-  const first = stroke.points[0];
-  if (!first) return;
-  drawDot(context, stroke, first);
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    drawSegment(context, stroke, stroke.points[index - 1], stroke.points[index]);
-  }
-}
+const emptyHistory: HistoryState = { canRedo: false, canUndo: false, count: 0 };
 
 export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const strokesRef = useRef<Stroke[]>([]);
-  const activeStrokeRef = useRef<Stroke | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const managerRef = useRef<CanvasManager | null>(null);
+  const activeStrokeRef = useRef<StrokeData | null>(null);
   const activePointerRef = useRef<number | null>(null);
+  const panGestureRef = useRef<PanGesture | null>(null);
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(28);
-  const [isEraser, setIsEraser] = useState(false);
+  const [tool, setTool] = useState<Tool>("brush");
   const [isPanMode, setIsPanMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isFilling, setIsFilling] = useState(false);
+  const [fillMessage, setFillMessage] = useState("");
+  const [tolerance, setTolerance] = useState(32);
   const [zoom, setZoom] = useState(100);
-  const [strokeCount, setStrokeCount] = useState(0);
+  const [history, setHistory] = useState<HistoryState>(emptyHistory);
   const [brushCursor, setBrushCursor] = useState<BrushCursor>({ x: 0, y: 0, scale: 1, visible: false });
 
-  function redraw() {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    strokesRef.current.forEach((stroke) => drawWholeStroke(context, stroke));
-  }
+  const isEraser = tool === "eraser";
+  const isBucket = tool === "bucket";
 
   function prepareCanvas() {
     const image = imageRef.current;
@@ -85,16 +63,17 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (!image || !canvas || !image.naturalWidth || !image.naturalHeight) return;
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
-    strokesRef.current = [];
+    managerRef.current = new CanvasManager(canvas, setHistory);
     activeStrokeRef.current = null;
     activePointerRef.current = null;
-    setStrokeCount(0);
+    panGestureRef.current = null;
+    setHistory(emptyHistory);
     setIsPanMode(false);
+    setIsDragging(false);
     setZoom(100);
-    redraw();
   }
 
-  function pointFromEvent(event: ReactPointerEvent<HTMLCanvasElement>): Point {
+  function pointFromEvent(event: ReactPointerEvent<HTMLCanvasElement>): CanvasPoint {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -116,22 +95,46 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     });
   }
 
+  async function fillAt(point: CanvasPoint) {
+    const manager = managerRef.current;
+    const image = imageRef.current;
+    if (!manager || !image || isFilling) return;
+    setIsFilling(true);
+    setFillMessage("");
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    try {
+      const command = await new BucketFillTool(manager, image).createCommand({ color, tolerance, x: point.x, y: point.y });
+      if (command) manager.commit(command);
+      else setFillMessage("Vùng này đã có màu hoặc chưa thể đổ thêm.");
+    } catch (error) {
+      setFillMessage(error instanceof Error && error.message === "canvas-too-large"
+        ? "Tranh lớn hơn 5000 × 5000 px nên chưa thể đổ màu an toàn."
+        : "Sun chưa thể đổ màu vùng này. Bé thử chạm sâu hơn vào vùng trắng nhé.");
+    } finally {
+      setIsFilling(false);
+    }
+  }
+
   function startStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode) return;
+    if (isPanMode || isFilling) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     updateBrushCursor(event);
-    event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFromEvent(event);
-    const stroke: Stroke = { color, eraser: isEraser, points: [point], size: brushSize };
+    if (isBucket) {
+      void fillAt(point);
+      return;
+    }
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const stroke: StrokeData = { color, eraser: isEraser, points: [point], size: brushSize };
     activePointerRef.current = event.pointerId;
     activeStrokeRef.current = stroke;
-    const context = canvasRef.current?.getContext("2d");
-    if (context) drawDot(context, stroke, point);
+    const context = event.currentTarget.getContext("2d");
+    if (context) new StrokeCommand(stroke).apply(context);
   }
 
   function continueStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode) return;
+    if (isPanMode || isBucket) return;
     updateBrushCursor(event);
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
@@ -140,53 +143,92 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const previous = stroke.points[stroke.points.length - 1];
     stroke.points.push(point);
     const context = canvasRef.current?.getContext("2d");
-    if (context) drawSegment(context, stroke, previous, point);
+    if (!context) return;
+    context.save();
+    context.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over";
+    context.strokeStyle = stroke.color;
+    context.lineWidth = stroke.size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    context.moveTo(previous.x, previous.y);
+    context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
   }
 
   function finishStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
-    if (isPanMode) return;
+    if (isPanMode || isBucket) return;
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
-    strokesRef.current.push(stroke);
+    managerRef.current?.commit(new StrokeCommand(stroke), true);
     activeStrokeRef.current = null;
     activePointerRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    setStrokeCount(strokesRef.current.length);
   }
 
-  function undo() {
-    strokesRef.current.pop();
-    setStrokeCount(strokesRef.current.length);
-    redraw();
+  function updateZoom(nextZoom: number) {
+    const next = Math.min(300, Math.max(50, nextZoom));
+    const stage = stageRef.current;
+    const centerX = stage ? stage.scrollLeft + stage.clientWidth / 2 : 0;
+    const centerY = stage ? stage.scrollTop + stage.clientHeight / 2 : 0;
+    const ratio = next / zoom;
+    setZoom(next);
+    if (next > 100 && zoom <= 100) setIsPanMode(true);
+    if (next <= 100) setIsPanMode(false);
+    requestAnimationFrame(() => {
+      if (!stage) return;
+      stage.scrollLeft = centerX * ratio - stage.clientWidth / 2;
+      stage.scrollTop = centerY * ratio - stage.clientHeight / 2;
+    });
+  }
+
+  function beginPan(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!isPanMode || zoom <= 100) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panGestureRef.current = {
+      pointerId: event.pointerId,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+      x: event.clientX,
+      y: event.clientY,
+    };
+    setIsDragging(true);
+  }
+
+  function movePan(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = panGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.currentTarget.scrollLeft = gesture.scrollLeft - (event.clientX - gesture.x);
+    event.currentTarget.scrollTop = gesture.scrollTop - (event.clientY - gesture.y);
+  }
+
+  function finishPan(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = panGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    panGestureRef.current = null;
+    setIsDragging(false);
   }
 
   function clearPainting() {
-    if (!strokeCount || !window.confirm("Xóa toàn bộ màu bé đã tô trên tranh này?")) return;
-    strokesRef.current = [];
-    setStrokeCount(0);
-    redraw();
+    if (!history.count || !window.confirm("Xóa toàn bộ màu bé đã tô trên tranh này?")) return;
+    managerRef.current?.clear();
   }
 
   function createCompositeCanvas() {
     const image = imageRef.current;
-    const paintCanvas = canvasRef.current;
-    if (!image || !paintCanvas) return null;
-    const output = document.createElement("canvas");
-    output.width = paintCanvas.width;
-    output.height = paintCanvas.height;
-    const context = output.getContext("2d");
-    if (!context) return null;
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, output.width, output.height);
-    context.drawImage(image, 0, 0, output.width, output.height);
-    context.globalCompositeOperation = "multiply";
-    context.drawImage(paintCanvas, 0, 0);
-    return output;
+    if (!image) return null;
+    try { return managerRef.current?.createCompositeCanvas(image, true) ?? null; }
+    catch { return null; }
   }
 
   function downloadColoredPainting() {
-    if (!strokeCount) return;
+    if (!history.count) return;
     const output = createCompositeCanvas();
     if (!output) return;
     output.toBlob((blob) => {
@@ -202,112 +244,123 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
 
   function printPainting() {
     const output = createCompositeCanvas();
-    if (!output) return;
-    printColoringImage(output.toDataURL("image/png"), art.title);
+    if (output) printColoringImage(output.toDataURL("image/png"), art.title);
   }
 
   const cursorDiameter = Math.max(6, brushSize * brushCursor.scale);
   const previewDiameter = Math.max(8, Math.round(brushSize * 0.48));
 
-  function updateZoom(nextZoom: number) {
-    setZoom(Math.min(250, Math.max(100, nextZoom)));
-  }
-
   return (
     <>
-      <div className={`coloring-paint-stage ${isPanMode ? "is-pan-mode" : ""}`}>
-        <div className="coloring-paper" style={{ width: `${zoom}%`, maxWidth: "none" }}>
-          <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
-          <div className="coloring-canvas-wrap">
-            <img ref={imageRef} src={art.src} alt={art.title} onLoad={prepareCanvas} draggable={false} />
-            <canvas
-              ref={canvasRef}
-              className={`${isEraser ? "is-erasing" : ""} ${isPanMode ? "is-panning" : ""}`}
-              onPointerEnter={updateBrushCursor}
-              onPointerDown={startStroke}
-              onPointerMove={continueStroke}
-              onPointerUp={finishStroke}
-              onPointerCancel={finishStroke}
-              onPointerLeave={() => {
-                if (activePointerRef.current === null) setBrushCursor((cursor) => ({ ...cursor, visible: false }));
-              }}
-              aria-label={`Vùng tô màu cho tranh ${art.title}`}
-            />
-            <span
-              aria-hidden="true"
-              className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
-              style={{
-                backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
-                borderColor: isEraser ? "#2e261e" : color,
-                height: cursorDiameter,
-                left: brushCursor.x,
-                opacity: brushCursor.visible && !isPanMode ? 1 : 0,
-                top: brushCursor.y,
-                width: cursorDiameter,
-              }}
-            />
+      <div
+        ref={stageRef}
+        className={`coloring-paint-stage ${isPanMode ? "is-pan-mode" : ""} ${isDragging ? "is-dragging" : ""}`}
+        onPointerDown={beginPan}
+        onPointerMove={movePan}
+        onPointerUp={finishPan}
+        onPointerCancel={finishPan}
+      >
+        <div className="coloring-zoom-surface" style={{ width: `${zoom}%` }}>
+          <div className="coloring-paper">
+            <div className="coloring-paper-heading"><span>SunShinSon</span><strong>Tranh của {childName}</strong></div>
+            <div className="coloring-canvas-wrap">
+              <img ref={imageRef} src={art.src} alt={art.title} onLoad={prepareCanvas} draggable={false} />
+              <canvas
+                ref={canvasRef}
+                className={`${isEraser ? "is-erasing" : ""} ${isPanMode ? "is-panning" : ""} ${isBucket ? "is-bucket" : ""}`}
+                onPointerEnter={updateBrushCursor}
+                onPointerDown={startStroke}
+                onPointerMove={continueStroke}
+                onPointerUp={finishStroke}
+                onPointerCancel={finishStroke}
+                onPointerLeave={() => {
+                  if (activePointerRef.current === null) setBrushCursor((cursor) => ({ ...cursor, visible: false }));
+                }}
+                aria-label={`Vùng tô màu cho tranh ${art.title}`}
+              />
+              <span
+                aria-hidden="true"
+                className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
+                style={{
+                  backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
+                  borderColor: isEraser ? "#2e261e" : color,
+                  height: cursorDiameter,
+                  left: brushCursor.x,
+                  opacity: brushCursor.visible && !isPanMode && !isBucket ? 1 : 0,
+                  top: brushCursor.y,
+                  width: cursorDiameter,
+                }}
+              />
+              {isFilling ? <div className="coloring-fill-loading" role="status"><span />Đang đổ màu...</div> : null}
+            </div>
+            <p>{art.title}</p>
           </div>
-          <p>{art.title}</p>
         </div>
       </div>
 
       <div className="coloring-paint-tools">
-        <div className="coloring-paint-heading"><strong>🎨 Hộp màu của bé</strong><span>Chạm hoặc kéo chuột trên tranh</span></div>
+        <div className="coloring-paint-heading"><strong>🎨 Hộp màu của bé</strong><span>Bút, đổ màu hoặc phóng to để tô chi tiết</span></div>
         <div className="coloring-zoom-tools" role="group" aria-label="Thu phóng và di chuyển tranh">
-          <button onClick={() => updateZoom(zoom - 25)} disabled={zoom <= 100} aria-label="Thu nhỏ tranh">−</button>
+          <button onClick={() => updateZoom(zoom - 25)} disabled={zoom <= 50} aria-label="Thu nhỏ tranh">−</button>
           <label>
             <span>Thu phóng</span>
-            <input type="range" min="100" max="250" step="25" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} aria-label="Mức thu phóng tranh" />
+            <input type="range" min="50" max="300" step="25" value={zoom} onChange={(event) => updateZoom(Number(event.target.value))} aria-label="Mức thu phóng tranh" />
           </label>
           <output aria-live="polite">{zoom}%</output>
-          <button onClick={() => updateZoom(zoom + 25)} disabled={zoom >= 250} aria-label="Phóng to tranh">＋</button>
-          <button className={isPanMode ? "is-active" : ""} onClick={() => setIsPanMode((value) => !value)} aria-pressed={isPanMode}>
+          <button onClick={() => updateZoom(zoom + 25)} disabled={zoom >= 300} aria-label="Phóng to tranh">＋</button>
+          <button className={isPanMode ? "is-active" : ""} onClick={() => setIsPanMode((value) => !value)} aria-pressed={isPanMode} disabled={zoom <= 100}>
             {isPanMode ? "✎ Tô tiếp" : "✥ Di chuyển"}
           </button>
         </div>
+        {zoom > 100 ? <p className="coloring-pan-tip">Phóng to xong, chọn “Di chuyển”, rồi chạm giữ và kéo tranh.</p> : null}
         <div className="coloring-palette" role="group" aria-label="Chọn màu vẽ">
           {palette.map((item) => (
             <button key={item.color} className={color === item.color && !isEraser ? "is-active" : ""} style={{ backgroundColor: item.color }}
-              onClick={() => { setColor(item.color); setIsEraser(false); }} aria-label={`Màu ${item.name}`} title={item.name} />
+              onClick={() => { setColor(item.color); if (tool === "eraser") setTool("brush"); }} aria-label={`Màu ${item.name}`} title={item.name} />
           ))}
+          <label className="coloring-custom-color" title="Chọn màu khác">
+            <input type="color" value={color} onChange={(event) => { setColor(event.target.value); if (tool === "eraser") setTool("brush"); }} aria-label="Chọn màu tùy ý" />
+            <span>＋</span>
+          </label>
         </div>
+        <div className="coloring-bucket-row">
+          <button className={tool === "bucket" ? "is-active" : ""} onClick={() => { setTool("bucket"); setIsPanMode(false); }} aria-pressed={tool === "bucket"}>▰ Đổ màu</button>
+          <label>
+            <span>Dung sai</span>
+            <input type="range" min="0" max="255" step="1" value={tolerance} onChange={(event) => setTolerance(Number(event.target.value))} aria-label="Dung sai đổ màu" />
+            <output>{tolerance}</output>
+          </label>
+        </div>
+        {fillMessage ? <p className="coloring-fill-message" role="status">{fillMessage}</p> : null}
         <div className="coloring-brush-presets" role="group" aria-label="Chọn nhanh cỡ bút">
           {brushPresets.map((preset) => {
             const dotSize = Math.max(7, Math.round(preset.size * 0.34));
             return (
-              <button
-                key={preset.size}
-                className={brushSize === preset.size ? "is-active" : ""}
-                onClick={() => setBrushSize(preset.size)}
-                aria-pressed={brushSize === preset.size}
-              >
-                <span
-                  className="coloring-brush-preset-dot"
-                  style={{ width: dotSize, height: dotSize, backgroundColor: isEraser ? "#fff" : color }}
-                  aria-hidden="true"
-                />
+              <button key={preset.size} className={brushSize === preset.size ? "is-active" : ""} onClick={() => { setBrushSize(preset.size); setTool("brush"); }} aria-pressed={brushSize === preset.size}>
+                <span className="coloring-brush-preset-dot" style={{ width: dotSize, height: dotSize, backgroundColor: isEraser ? "#fff" : color }} aria-hidden="true" />
                 <span>{preset.label}</span>
               </button>
             );
           })}
         </div>
         <div className="coloring-tool-row">
-          <button className={!isEraser ? "is-active" : ""} onClick={() => setIsEraser(false)}>✎ Bút màu</button>
-          <button className={isEraser ? "is-active" : ""} onClick={() => setIsEraser(true)}>▱ Tẩy</button>
+          <button className={tool === "brush" ? "is-active" : ""} onClick={() => { setTool("brush"); setIsPanMode(false); }}>✎ Bút màu</button>
+          <button className={tool === "eraser" ? "is-active" : ""} onClick={() => { setTool("eraser"); setIsPanMode(false); }}>▱ Tẩy</button>
           <label className="coloring-brush-size">
             <span>Nét</span>
             <span className="coloring-brush-size-dot" style={{ width: previewDiameter, height: previewDiameter, backgroundColor: isEraser ? "#fff" : color }} aria-hidden="true" />
             <input type="range" min="10" max="72" step="2" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} aria-label="Độ dày nét vẽ" />
             <output aria-live="polite">{brushSize}</output>
           </label>
-          <button onClick={undo} disabled={!strokeCount}>↶ Hoàn tác</button>
-          <button onClick={clearPainting} disabled={!strokeCount}>× Xóa màu</button>
+          <button onClick={() => managerRef.current?.undo()} disabled={!history.canUndo}>↶ Hoàn tác</button>
+          <button onClick={() => managerRef.current?.redo()} disabled={!history.canRedo}>↷ Làm lại</button>
+          <button onClick={clearPainting} disabled={!history.count}>× Xóa màu</button>
         </div>
       </div>
 
       <div className="coloring-preview-actions coloring-paint-actions">
         <button onClick={printPainting}>⌁ In tranh</button>
-        <button className="coloring-download-painted" onClick={downloadColoredPainting} disabled={!strokeCount}>↓ Tải tranh đã tô</button>
+        <button className="coloring-download-painted" onClick={downloadColoredPainting} disabled={!history.count}>↓ Tải tranh đã tô</button>
       </div>
     </>
   );

@@ -84,12 +84,19 @@
 .coloring-canvas-wrap img { object-fit: contain; user-select: none; }
 .coloring-canvas-wrap canvas { z-index: 1; cursor: none; touch-action: none; mix-blend-mode: multiply; }
 .coloring-canvas-wrap canvas.is-panning { pointer-events: none; }
+.coloring-canvas-wrap canvas.is-bucket { cursor: cell; }
 .coloring-brush-cursor { position: absolute; z-index: 2; border: 2px solid; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); transition: width .08s, height .08s, opacity .08s; box-shadow: 0 0 0 1px rgba(255,255,255,.82); }
 .coloring-brush-cursor.is-eraser { border-style: dashed; box-shadow: 0 0 0 1px rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.9); }
 .coloring-paper > p { margin: 6px 0 0; text-align: center; font-size: 11px; font-weight: 900; }
 .coloring-paint-stage { width: min(100%, 680px); max-height: min(68vh, 760px); overflow: auto; padding: 10px; border: 1px solid #cfc5b7; border-radius: 16px; background: #e9e1d5; box-sizing: border-box; overscroll-behavior: contain; touch-action: pan-x pan-y; }
-.coloring-paint-stage .coloring-paper { min-width: 100%; margin: 0 auto; box-sizing: border-box; }
+.coloring-zoom-surface { min-width: 50%; margin: 0 auto; transition: width .18s ease; }
+.coloring-paint-stage .coloring-paper { width: 100%; min-width: 100%; max-width: none; max-height: none; margin: 0 auto; box-sizing: border-box; }
+.coloring-paint-stage.is-pan-mode { cursor: grab; touch-action: none; user-select: none; }
 .coloring-paint-stage.is-pan-mode .coloring-canvas-wrap { cursor: grab; }
+.coloring-paint-stage.is-dragging, .coloring-paint-stage.is-dragging .coloring-canvas-wrap { cursor: grabbing; }
+.coloring-fill-loading { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 9px; background: rgba(255,255,255,.7); color: var(--coloring-ink); font-size: 11px; font-weight: 1000; backdrop-filter: blur(2px); }
+.coloring-fill-loading span { width: 22px; height: 22px; border: 3px solid #e4d7bd; border-top-color: var(--coloring-orange); border-radius: 50%; animation: coloring-spin .7s linear infinite; }
+@keyframes coloring-spin { to { transform: rotate(360deg); } }
 .coloring-paint-tools { width: min(100%, 520px); padding: 11px; border: 1px solid #cfc5b7; border-radius: 15px; background: #fffdf8; box-shadow: 0 5px 14px rgba(53,42,28,.08); }
 .coloring-paint-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
 .coloring-paint-heading strong { font-size: 12px; }
@@ -101,10 +108,21 @@
 .coloring-zoom-tools label { min-width: 150px; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; color: #6f665d; font-size: 9px; font-weight: 900; }
 .coloring-zoom-tools input { min-width: 80px; flex: 1; accent-color: var(--coloring-orange); cursor: ew-resize; }
 .coloring-zoom-tools output { min-width: 38px; color: var(--coloring-ink); text-align: center; font-size: 10px; font-weight: 1000; font-variant-numeric: tabular-nums; }
+.coloring-pan-tip { margin: -3px 0 9px; color: #746b62; text-align: center; font-size: 9px; font-weight: 800; }
 .coloring-palette { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; }
 .coloring-palette button { width: 27px; height: 27px; padding: 0; border: 2px solid #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px #81776c; transition: transform .15s, box-shadow .15s; }
 .coloring-palette button:hover { transform: scale(1.1); }
 .coloring-palette button.is-active { transform: scale(1.13); box-shadow: 0 0 0 3px var(--coloring-yellow), 0 0 0 5px var(--coloring-ink); }
+.coloring-custom-color { position: relative; width: 29px; height: 29px; display: grid; place-items: center; overflow: hidden; border: 2px solid #fff; border-radius: 50%; background: conic-gradient(#ef4444, #facc15, #22c55e, #38bdf8, #a855f7, #ef4444); box-shadow: 0 0 0 1px #81776c; cursor: pointer; }
+.coloring-custom-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.coloring-custom-color span { z-index: 1; color: #fff; font-size: 16px; font-weight: 1000; text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; }
+.coloring-bucket-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.coloring-bucket-row > button { min-height: 38px; padding: 0 12px; border: 1px solid #bdb3a7; border-radius: 10px; background: #fff; color: var(--coloring-ink); font-size: 10px; font-weight: 1000; cursor: pointer; }
+.coloring-bucket-row > button.is-active { border: 2px solid var(--coloring-ink); background: #bfe8ff; box-shadow: 0 2px 0 var(--coloring-ink); }
+.coloring-bucket-row label { min-height: 38px; flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 9px; border: 1px solid #d9d0c4; border-radius: 10px; background: #fff; color: #6f665d; font-size: 9px; font-weight: 900; }
+.coloring-bucket-row input { min-width: 80px; flex: 1; accent-color: #38bdf8; }
+.coloring-bucket-row output { min-width: 25px; color: var(--coloring-ink); text-align: right; font-variant-numeric: tabular-nums; }
+.coloring-fill-message { margin: 7px 0 0; color: #8b5c08; text-align: center; font-size: 9px; font-weight: 800; }
 .coloring-brush-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
 .coloring-brush-presets button { min-height: 43px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 7px; border: 1px solid #cfc5b7; border-radius: 10px; background: #fff; color: var(--coloring-ink); font-size: 9px; font-weight: 900; cursor: pointer; }
 .coloring-brush-presets button:hover { background: #fff8e5; }
@@ -239,6 +257,8 @@
   .coloring-zoom-tools { flex-wrap: wrap; }
   .coloring-zoom-tools label { min-width: 130px; }
   .coloring-zoom-tools label span { display: none; }
+  .coloring-bucket-row { align-items: stretch; }
+  .coloring-bucket-row label { min-width: 0; }
 }
 
 @media print {
@@ -257,6 +277,7 @@
   .coloring-art-modal { width: 100% !important; max-height: none !important; border: 0 !important; box-shadow: none !important; }
   .coloring-modal-header { display: none !important; }
   .coloring-modal-paint-body { padding: 0 !important; overflow: visible !important; background: #fff !important; }
+  .coloring-zoom-surface { width: 100% !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
