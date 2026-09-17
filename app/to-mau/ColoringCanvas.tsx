@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  forwardRef,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -46,6 +48,10 @@ type ColoringCanvasProps = {
   onDirtyChange?: (dirty: boolean) => void;
 };
 
+export type ColoringCanvasHandle = {
+  saveToDevice: () => Promise<boolean>;
+};
+
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
   { color: "#facc15", name: "Vàng" }, { color: "#22c55e", name: "Xanh lá" },
@@ -72,7 +78,10 @@ function midpoint(first: TouchPoint, second: TouchPoint): TouchPoint {
   return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
 }
 
-export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvasProps) {
+export const ColoringCanvas = forwardRef<ColoringCanvasHandle, ColoringCanvasProps>(function ColoringCanvas(
+  { art, childName, onDirtyChange },
+  ref,
+) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const brushCursorRef = useRef<HTMLSpanElement>(null);
@@ -115,6 +124,10 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
 
   const isEraser = tool === "eraser";
   const isBucket = tool === "bucket";
+
+  useImperativeHandle(ref, () => ({
+    saveToDevice: downloadColoredPainting,
+  }));
 
   useEffect(() => {
     let active = true;
@@ -588,21 +601,29 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
     catch { return null; }
   }
 
-  function downloadColoredPainting() {
-    if (!history.count) return;
+  async function downloadColoredPainting(): Promise<boolean> {
+    if (!history.count) return false;
     const output = createCompositeCanvas();
-    if (!output) return;
-    output.toBlob((blob) => {
-      if (!blob) return;
+    if (!output) return false;
+
+    try {
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        output.toBlob((value) => value ? resolve(value) : reject(new Error("png-unavailable")), "image/png");
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `${art.id}-be-to-mau.png`;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
       savedHistoryCountRef.current = history.count;
       onDirtyChange?.(false);
       window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-    }, "image/png");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function printPainting() {
@@ -772,7 +793,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
 
       <div className="coloring-preview-actions coloring-paint-actions">
         <button onClick={printPainting}>⌁ In tranh</button>
-        <button className="coloring-download-painted" onClick={downloadColoredPainting} disabled={!history.count}>↓ Tải tranh đã tô</button>
+        <button className="coloring-download-painted" onClick={() => { void downloadColoredPainting(); }} disabled={!history.count}>↓ Tải tranh đã tô</button>
         {driveStatus?.connected ? (
           <button className="coloring-drive-save" onClick={savePaintingToDrive} disabled={!history.count || isSavingToDrive}>
             {isSavingToDrive ? "Đang lưu..." : "☁ Lưu Google Drive"}
@@ -785,4 +806,4 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
       {driveMessage ? <p className="coloring-drive-message" role="status">{driveMessage}</p> : null}
     </>
   );
-}
+});

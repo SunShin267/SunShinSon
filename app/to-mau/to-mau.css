@@ -211,14 +211,17 @@
 .coloring-modal-paint-body .coloring-paint-stage, .coloring-modal-paint-body .coloring-paint-tools { width: min(100%, 780px); }
 .coloring-modal-paint-body .coloring-paint-stage { height: calc(100svh - 330px); max-height: none; }
 .coloring-exit-confirm-backdrop { position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: 18px; background: rgba(36,29,22,.76); backdrop-filter: blur(10px); }
-.coloring-exit-confirm { width: min(100%, 430px); padding: 28px; border: 2px solid var(--coloring-ink); border-radius: 24px; background: #fffdf8; text-align: center; box-shadow: 0 24px 70px rgba(28,21,14,.4); }
+.coloring-exit-confirm { width: min(100%, 520px); padding: 28px; border: 2px solid var(--coloring-ink); border-radius: 24px; background: #fffdf8; text-align: center; box-shadow: 0 24px 70px rgba(28,21,14,.4); }
 .coloring-exit-confirm-icon { width: 62px; height: 62px; display: grid; place-items: center; margin: 0 auto 13px; border: 2px solid var(--coloring-ink); border-radius: 50%; background: #fff0bd; font-size: 29px; }
 .coloring-exit-confirm h2 { margin: 0; font-size: 25px; letter-spacing: -.8px; }
 .coloring-exit-confirm p { margin: 11px 0 21px; color: #6f665d; font-size: 13px; line-height: 1.55; }
-.coloring-exit-confirm > div { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.coloring-exit-confirm > .coloring-exit-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .coloring-exit-confirm button { min-height: 48px; padding: 0 13px; border: 2px solid var(--coloring-ink); border-radius: 13px; font-size: 11px; font-weight: 1000; cursor: pointer; box-shadow: 0 3px 0 var(--coloring-ink); }
+.coloring-exit-confirm button:disabled { cursor: wait; opacity: .62; }
 .coloring-exit-stay { background: var(--coloring-yellow); }
+.coloring-exit-save { background: #bff3d0; color: #145c35; }
 .coloring-exit-leave { background: #fff; color: #9f3b28; }
+.coloring-exit-confirm .coloring-exit-save-message { margin: -8px 0 16px; padding: 9px 12px; border-radius: 10px; background: #fff0ed; color: #a23625; font-weight: 800; }
 
 .coloring-page button:focus-visible, .coloring-page a:focus-visible, .coloring-page textarea:focus-visible { outline: 4px solid #7aa5ff; outline-offset: 3px; }
 
@@ -271,7 +274,7 @@
   .coloring-modal-paint-body .coloring-paint-stage { height: max(245px, calc(100svh - 410px)); min-height: 245px; max-height: none; padding: 6px; }
   .coloring-modal-paint-body .coloring-paint-tools { padding: 9px 7px; }
   .coloring-exit-confirm { padding: 23px 18px; border-radius: 20px; }
-  .coloring-exit-confirm > div { grid-template-columns: 1fr; }
+  .coloring-exit-confirm > .coloring-exit-actions { grid-template-columns: 1fr; }
   .coloring-zoom-tools { flex-wrap: wrap; }
   .coloring-zoom-tools label { min-width: 130px; }
   .coloring-zoom-tools label span { display: none; }

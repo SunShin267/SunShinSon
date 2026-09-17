@@ -8,8 +8,15 @@ const canvasSource = await readFile(new URL("../app/to-mau/ColoringCanvas.tsx", 
 test("uses an in-app exit dialog instead of a browser-native confirm", () => {
   assert.match(pageSource, /role="alertdialog"/u);
   assert.match(pageSource, /Ở lại tô tiếp/u);
+  assert.match(pageSource, /Lưu ảnh rồi thoát/u);
   assert.match(pageSource, /Thoát và bỏ nét tô/u);
   assert.doesNotMatch(pageSource, /window\.confirm\("Tranh của bé đang có thay đổi/u);
+});
+
+test("can save the current colored canvas locally before closing", () => {
+  assert.match(pageSource, /coloringCanvasRef\.current\?\.saveToDevice\(\)/u);
+  assert.match(canvasSource, /saveToDevice: downloadColoredPainting/u);
+  assert.match(canvasSource, /downloadColoredPainting\(\): Promise<boolean>/u);
 });
 
 test("reports painting changes synchronously so immediate close is protected", () => {

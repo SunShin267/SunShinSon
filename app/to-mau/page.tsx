@@ -6,7 +6,7 @@ import { SunLogo } from "../components/SunLogo";
 import { readChildName } from "../lib/child-session";
 import { navigateInternal } from "../lib/navigation";
 import { readVersionedStorage, writeVersionedStorage } from "../lib/versioned-storage";
-import { ColoringCanvas } from "./ColoringCanvas";
+import { ColoringCanvas, type ColoringCanvasHandle } from "./ColoringCanvas";
 import {
   addSavedColoringArt,
   isSavedColoringCollection,
@@ -95,6 +95,9 @@ export default function ColoringPage() {
   const [driveArts, setDriveArts] = useState<ColoringArt[]>([]);
   const [artModalMode, setArtModalMode] = useState<"preview" | "paint" | null>(null);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
+  const [exitSaveMessage, setExitSaveMessage] = useState("");
+  const coloringCanvasRef = useRef<ColoringCanvasHandle>(null);
   const paintHasUnsavedChangesRef = useRef(false);
 
   const refreshDriveArts = useCallback(async () => {
@@ -122,14 +125,30 @@ export default function ColoringPage() {
     }
     paintHasUnsavedChangesRef.current = false;
     setShowExitConfirmation(false);
+    setExitSaveMessage("");
     setArtModalMode(null);
   }, [artModalMode]);
 
   const confirmCloseArtModal = useCallback(() => {
     paintHasUnsavedChangesRef.current = false;
     setShowExitConfirmation(false);
+    setIsSavingBeforeExit(false);
+    setExitSaveMessage("");
     setArtModalMode(null);
   }, []);
+
+  const saveAndCloseArtModal = useCallback(async () => {
+    if (isSavingBeforeExit) return;
+    setIsSavingBeforeExit(true);
+    setExitSaveMessage("");
+    const saved = await coloringCanvasRef.current?.saveToDevice() ?? false;
+    if (!saved) {
+      setIsSavingBeforeExit(false);
+      setExitSaveMessage("Sun chưa thể lưu ảnh. Bé hãy thử lại nhé.");
+      return;
+    }
+    confirmCloseArtModal();
+  }, [confirmCloseArtModal, isSavingBeforeExit]);
 
   useEffect(() => {
     let isActive = true;
@@ -159,7 +178,9 @@ export default function ColoringPage() {
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (showExitConfirmation) setShowExitConfirmation(false);
+      if (showExitConfirmation) {
+        if (!isSavingBeforeExit) setShowExitConfirmation(false);
+      }
       else closeArtModal();
     };
     window.addEventListener("keydown", closeOnEscape);
@@ -167,7 +188,7 @@ export default function ColoringPage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [artModalMode, closeArtModal, showExitConfirmation]);
+  }, [artModalMode, closeArtModal, isSavingBeforeExit, showExitConfirmation]);
 
   async function draw() {
     if (!prompt.trim() || isDrawing) return;
@@ -210,6 +231,7 @@ export default function ColoringPage() {
     setGenerationNotice("");
     paintHasUnsavedChangesRef.current = false;
     setShowExitConfirmation(false);
+    setExitSaveMessage("");
     setArtModalMode("preview");
   }
 
@@ -280,6 +302,7 @@ export default function ColoringPage() {
     setSelectedArt(art);
     paintHasUnsavedChangesRef.current = false;
     setShowExitConfirmation(false);
+    setExitSaveMessage("");
     setArtModalMode("paint");
   }
 
@@ -455,6 +478,7 @@ export default function ColoringPage() {
               <div className="coloring-modal-paint-body">
                 <ColoringCanvas
                   key={selectedArt.id}
+                  ref={coloringCanvasRef}
                   art={selectedArt}
                   childName={childName}
                   onDirtyChange={(dirty) => { paintHasUnsavedChangesRef.current = dirty; }}
@@ -467,15 +491,17 @@ export default function ColoringPage() {
 
       {showExitConfirmation ? (
         <div className="coloring-exit-confirm-backdrop" role="presentation" onPointerDown={(event) => {
-          if (event.target === event.currentTarget) setShowExitConfirmation(false);
+          if (event.target === event.currentTarget && !isSavingBeforeExit) setShowExitConfirmation(false);
         }}>
           <section className="coloring-exit-confirm" role="alertdialog" aria-modal="true" aria-labelledby="coloring-exit-title" aria-describedby="coloring-exit-description">
             <span className="coloring-exit-confirm-icon" aria-hidden="true">🎨</span>
             <h2 id="coloring-exit-title">Bé muốn thoát tranh này?</h2>
-            <p id="coloring-exit-description">Phần bé vừa tô chưa được lưu. Nếu thoát bây giờ, các nét màu mới sẽ bị mất.</p>
-            <div>
-              <button className="coloring-exit-stay" onClick={() => setShowExitConfirmation(false)} autoFocus>Ở lại tô tiếp</button>
-              <button className="coloring-exit-leave" onClick={confirmCloseArtModal}>Thoát và bỏ nét tô</button>
+            <p id="coloring-exit-description">Phần bé vừa tô chưa được lưu. Bé có thể lưu ảnh vào máy trước khi thoát.</p>
+            {exitSaveMessage ? <p className="coloring-exit-save-message" role="status">{exitSaveMessage}</p> : null}
+            <div className="coloring-exit-actions">
+              <button className="coloring-exit-stay" onClick={() => { setExitSaveMessage(""); setShowExitConfirmation(false); }} disabled={isSavingBeforeExit} autoFocus>Ở lại tô tiếp</button>
+              <button className="coloring-exit-save" onClick={() => { void saveAndCloseArtModal(); }} disabled={isSavingBeforeExit}>{isSavingBeforeExit ? "Đang lưu..." : "↓ Lưu ảnh rồi thoát"}</button>
+              <button className="coloring-exit-leave" onClick={confirmCloseArtModal} disabled={isSavingBeforeExit}>Thoát và bỏ nét tô</button>
             </div>
           </section>
         </div>
