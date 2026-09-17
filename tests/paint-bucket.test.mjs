@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BucketFillCommand, BucketFillTool, ColorHelper } from "../app/to-mau/paint-bucket.ts";
+import { BucketFillCommand, BucketFillTool, CanvasManager, ColorHelper } from "../app/to-mau/paint-bucket.ts";
 
 test("ColorHelper supports tolerance and transparent RGBA pixels", () => {
   const pixels = new Uint8ClampedArray([
@@ -68,4 +68,24 @@ test("BucketFillTool fills only the connected side of a black outline", async ()
   command.apply(context);
 
   assert.deepEqual(fills.sort((left, right) => left[1] - right[1]), [[1, 1, 2, 1], [1, 2, 2, 1], [1, 3, 2, 1]]);
+});
+
+test("CanvasManager discards only commands created by a view gesture", () => {
+  const applied = [];
+  const history = [];
+  const context = { clearRect: () => applied.push("clear") };
+  const canvas = { getContext: () => context, height: 100, width: 100 };
+  const manager = new CanvasManager(canvas, (state) => history.push(state));
+  const kept = { apply: () => applied.push("kept"), memoryBytes: 1 };
+  const firstClick = { apply: () => applied.push("first-click"), memoryBytes: 1 };
+  const secondClick = { apply: () => applied.push("second-click"), memoryBytes: 1 };
+
+  manager.commit(kept);
+  manager.commit(firstClick);
+  manager.commit(secondClick);
+  applied.length = 0;
+  manager.discardCommands([firstClick, secondClick]);
+
+  assert.deepEqual(applied, ["clear", "kept"]);
+  assert.deepEqual(history.at(-1), { canRedo: false, canUndo: true, count: 1 });
 });

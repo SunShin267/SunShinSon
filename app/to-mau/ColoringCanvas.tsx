@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 
 import { CanvasViewportController, canvasPointFromClient, type ViewTransform } from "./canvas-viewport";
 import type { ColoringArt } from "./coloring-arts";
@@ -8,6 +15,7 @@ import {
   BucketFillTool,
   CanvasManager,
   StrokeCommand,
+  type CanvasCommand,
   type CanvasPoint,
   type HistoryState,
   type StrokeData,
@@ -24,6 +32,7 @@ type PinchGesture = {
   startDistance: number;
   startTransform: ViewTransform;
 };
+type RecentClickCommand = { command: CanvasCommand; completedAt: number };
 
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
@@ -64,6 +73,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const pinchGestureRef = useRef<PinchGesture | null>(null);
   const zoomFrameRef = useRef<number | null>(null);
   const reportedScaleRef = useRef(1);
+  const recentClickCommandsRef = useRef<RecentClickCommand[]>([]);
+  const viewGestureGenerationRef = useRef(0);
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(28);
   const [tool, setTool] = useState<Tool>("brush");
@@ -117,6 +128,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     panGestureRef.current = null;
     touchPointsRef.current.clear();
     pinchGestureRef.current = null;
+    recentClickCommandsRef.current = [];
+    viewGestureGenerationRef.current += 1;
     setHistory(emptyHistory);
     setIsPanMode(false);
     setIsDragging(false);
@@ -161,7 +174,22 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     managerRef.current?.redraw();
   }
 
-  async function fillAt(point: CanvasPoint) {
+  function rememberClickCommand(command: CanvasCommand) {
+    const cutoff = performance.now() - 700;
+    recentClickCommandsRef.current = [
+      ...recentClickCommandsRef.current.filter((entry) => entry.completedAt >= cutoff),
+      { command, completedAt: performance.now() },
+    ];
+  }
+
+  function isTapStroke(stroke: StrokeData) {
+    const first = stroke.points[0];
+    if (!first) return false;
+    const maximumTravel = Math.max(4, stroke.size * 0.15);
+    return stroke.points.every((point) => Math.hypot(point.x - first.x, point.y - first.y) <= maximumTravel);
+  }
+
+  async function fillAt(point: CanvasPoint, rememberAsClick = false, gestureGeneration = viewGestureGenerationRef.current) {
     const manager = managerRef.current;
     const image = imageRef.current;
     if (!manager || !image || isFilling) return;
@@ -170,7 +198,11 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     try {
       const command = await new BucketFillTool(manager, image).createCommand({ color, tolerance, x: point.x, y: point.y });
-      if (command) manager.commit(command);
+      if (gestureGeneration !== viewGestureGenerationRef.current) return;
+      if (command) {
+        manager.commit(command);
+        if (rememberAsClick) rememberClickCommand(command);
+      }
       else setFillMessage("Vùng này đã có màu hoặc chưa thể đổ thêm.");
     } catch (error) {
       setFillMessage(error instanceof Error && error.message === "canvas-too-large"
@@ -188,7 +220,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     updateBrushCursor(event);
     const point = pointFromEvent(event);
     if (isBucket) {
-      void fillAt(point);
+      void fillAt(point, event.pointerType === "mouse");
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -228,7 +260,9 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const stroke = activeStrokeRef.current;
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
-    managerRef.current?.commit(new StrokeCommand(stroke), true);
+    const command = new StrokeCommand(stroke);
+    managerRef.current?.commit(command, true);
+    if (event.pointerType === "mouse" && isTapStroke(stroke)) rememberClickCommand(command);
     activeStrokeRef.current = null;
     activePointerRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -245,6 +279,23 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     viewportControllerRef.current?.reset();
     setIsPanMode(false);
     setIsDragging(false);
+  }
+
+  function resetViewFromDoubleClick(event: ReactMouseEvent<HTMLDivElement>) {
+    const controller = viewportControllerRef.current;
+    if (!controller || Math.abs(controller.getState().scale - 1) < 0.001) return;
+    event.preventDefault();
+    viewGestureGenerationRef.current += 1;
+    cancelActiveStroke();
+    if (event.target === canvasRef.current) {
+      const cutoff = performance.now() - 700;
+      const commands = recentClickCommandsRef.current
+        .filter((entry) => entry.completedAt >= cutoff)
+        .map((entry) => entry.command);
+      managerRef.current?.discardCommands(commands);
+    }
+    recentClickCommandsRef.current = [];
+    resetView();
   }
 
   function zoomWithWheel(event: ReactWheelEvent<HTMLDivElement>) {
@@ -395,7 +446,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
         onPointerUp={finishPan}
         onPointerCancel={finishPan}
         onWheel={zoomWithWheel}
-        onDoubleClick={resetView}
+        onDoubleClick={resetViewFromDoubleClick}
       >
         <div ref={viewportContentRef} className="coloring-zoom-surface">
           <div className="coloring-paper">

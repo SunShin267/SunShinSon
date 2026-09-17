@@ -162,6 +162,18 @@ export class CanvasManager {
     this.emitHistory();
   }
 
+  /** Remove only the supplied commands, used to discard marks created by a UI gesture. */
+  discardCommands(commands: readonly CanvasCommand[]) {
+    if (!commands.length) return;
+    const discarded = new Set(commands);
+    const remaining = this.commands.filter((command) => !discarded.has(command));
+    if (remaining.length === this.commands.length) return;
+    this.commands = remaining;
+    this.redoCommands = [];
+    this.redraw();
+    this.emitHistory();
+  }
+
   clear() {
     this.commands = [];
     this.redoCommands = [];
