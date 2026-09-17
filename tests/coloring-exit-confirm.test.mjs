@@ -13,6 +13,12 @@ test("uses an in-app exit dialog instead of a browser-native confirm", () => {
   assert.doesNotMatch(pageSource, /window\.confirm\("Tranh của bé đang có thay đổi/u);
 });
 
+test("always asks for confirmation when the coloring popup is closed", () => {
+  assert.match(pageSource, /if \(artModalMode === "paint"\) \{[\s\S]*?setShowExitConfirmation\(true\)/u);
+  assert.doesNotMatch(pageSource, /artModalMode === "paint" && paintHasUnsavedChangesRef\.current/u);
+  assert.match(pageSource, /Bé chưa có thay đổi nào cần lưu/u);
+});
+
 test("can save the current colored canvas locally before closing", () => {
   assert.match(pageSource, /coloringCanvasRef\.current\?\.saveToDevice\(\)/u);
   assert.match(canvasSource, /saveToDevice: downloadColoredPainting/u);

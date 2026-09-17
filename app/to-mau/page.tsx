@@ -95,6 +95,7 @@ export default function ColoringPage() {
   const [driveArts, setDriveArts] = useState<ColoringArt[]>([]);
   const [artModalMode, setArtModalMode] = useState<"preview" | "paint" | null>(null);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const [exitHasUnsavedChanges, setExitHasUnsavedChanges] = useState(false);
   const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
   const [exitSaveMessage, setExitSaveMessage] = useState("");
   const coloringCanvasRef = useRef<ColoringCanvasHandle>(null);
@@ -119,11 +120,14 @@ export default function ColoringPage() {
   }, []);
 
   const closeArtModal = useCallback(() => {
-    if (artModalMode === "paint" && paintHasUnsavedChangesRef.current) {
+    if (artModalMode === "paint") {
+      setExitHasUnsavedChanges(paintHasUnsavedChangesRef.current);
+      setExitSaveMessage("");
       setShowExitConfirmation(true);
       return;
     }
     paintHasUnsavedChangesRef.current = false;
+    setExitHasUnsavedChanges(false);
     setShowExitConfirmation(false);
     setExitSaveMessage("");
     setArtModalMode(null);
@@ -131,6 +135,7 @@ export default function ColoringPage() {
 
   const confirmCloseArtModal = useCallback(() => {
     paintHasUnsavedChangesRef.current = false;
+    setExitHasUnsavedChanges(false);
     setShowExitConfirmation(false);
     setIsSavingBeforeExit(false);
     setExitSaveMessage("");
@@ -496,12 +501,16 @@ export default function ColoringPage() {
           <section className="coloring-exit-confirm" role="alertdialog" aria-modal="true" aria-labelledby="coloring-exit-title" aria-describedby="coloring-exit-description">
             <span className="coloring-exit-confirm-icon" aria-hidden="true">🎨</span>
             <h2 id="coloring-exit-title">Bé muốn thoát tranh này?</h2>
-            <p id="coloring-exit-description">Phần bé vừa tô chưa được lưu. Bé có thể lưu ảnh vào máy trước khi thoát.</p>
+            <p id="coloring-exit-description">{exitHasUnsavedChanges
+              ? "Phần bé vừa tô chưa được lưu. Bé có thể lưu ảnh vào máy trước khi thoát."
+              : "Bé chưa có thay đổi nào cần lưu. Bé có muốn đóng tranh này không?"}</p>
             {exitSaveMessage ? <p className="coloring-exit-save-message" role="status">{exitSaveMessage}</p> : null}
-            <div className="coloring-exit-actions">
+            <div className={`coloring-exit-actions ${exitHasUnsavedChanges ? "has-save-action" : ""}`}>
               <button className="coloring-exit-stay" onClick={() => { setExitSaveMessage(""); setShowExitConfirmation(false); }} disabled={isSavingBeforeExit} autoFocus>Ở lại tô tiếp</button>
-              <button className="coloring-exit-save" onClick={() => { void saveAndCloseArtModal(); }} disabled={isSavingBeforeExit}>{isSavingBeforeExit ? "Đang lưu..." : "↓ Lưu ảnh rồi thoát"}</button>
-              <button className="coloring-exit-leave" onClick={confirmCloseArtModal} disabled={isSavingBeforeExit}>Thoát và bỏ nét tô</button>
+              {exitHasUnsavedChanges ? (
+                <button className="coloring-exit-save" onClick={() => { void saveAndCloseArtModal(); }} disabled={isSavingBeforeExit}>{isSavingBeforeExit ? "Đang lưu..." : "↓ Lưu ảnh rồi thoát"}</button>
+              ) : null}
+              <button className="coloring-exit-leave" onClick={confirmCloseArtModal} disabled={isSavingBeforeExit}>{exitHasUnsavedChanges ? "Thoát và bỏ nét tô" : "Đóng tranh"}</button>
             </div>
           </section>
         </div>
