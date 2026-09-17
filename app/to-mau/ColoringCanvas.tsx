@@ -109,17 +109,12 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
   const [tolerance, setTolerance] = useState(32);
   const [zoom, setZoom] = useState(100);
   const [history, setHistory] = useState<HistoryState>(emptyHistory);
-  const [isDirty, setIsDirty] = useState(false);
   const [driveStatus, setDriveStatus] = useState<DriveStatus | null>(null);
   const [driveMessage, setDriveMessage] = useState("");
   const [isSavingToDrive, setIsSavingToDrive] = useState(false);
 
   const isEraser = tool === "eraser";
   const isBucket = tool === "bucket";
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     let active = true;
@@ -193,7 +188,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
     canvas.height = image.naturalHeight;
     managerRef.current = new CanvasManager(canvas, (nextHistory) => {
       setHistory(nextHistory);
-      setIsDirty(nextHistory.count !== savedHistoryCountRef.current);
+      onDirtyChange?.(nextHistory.count !== savedHistoryCountRef.current);
     });
     activeStrokeRef.current = null;
     activePointerRef.current = null;
@@ -210,7 +205,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
     pendingTapTimersRef.current.clear();
     setHistory(emptyHistory);
     savedHistoryCountRef.current = 0;
-    setIsDirty(false);
+    onDirtyChange?.(false);
     setIsPanMode(false);
     setIsDragging(false);
     setIsPinching(false);
@@ -278,6 +273,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
   function scheduleTapCommand(command: CanvasCommand) {
     const manager = managerRef.current;
     if (!manager) return;
+    onDirtyChange?.(true);
     const timer = window.setTimeout(() => {
       pendingTapTimersRef.current.delete(timer);
       if (managerRef.current !== manager) return;
@@ -348,7 +344,10 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
     activeStrokeAppliedRef.current = event.pointerType !== "mouse" && event.pointerType !== "touch";
     if (activeStrokeAppliedRef.current) {
       const context = event.currentTarget.getContext("2d");
-      if (context) new StrokeCommand(stroke).apply(context);
+      if (context) {
+        new StrokeCommand(stroke).apply(context);
+        onDirtyChange?.(true);
+      }
     }
   }
 
@@ -366,6 +365,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
     if (!activeStrokeAppliedRef.current) {
       new StrokeCommand({ ...stroke, points: [previous] }).apply(context);
       activeStrokeAppliedRef.current = true;
+      onDirtyChange?.(true);
     }
     context.save();
     context.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over";
@@ -425,6 +425,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
       .map((entry) => entry.command);
     managerRef.current?.discardCommands(commands);
     recentClickCommandsRef.current = [];
+    if (!commands.length) onDirtyChange?.(history.count !== savedHistoryCountRef.current);
     resetView();
   }
 
@@ -599,7 +600,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
       link.download = `${art.id}-be-to-mau.png`;
       link.click();
       savedHistoryCountRef.current = history.count;
-      setIsDirty(false);
+      onDirtyChange?.(false);
       window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     }, "image/png");
   }
@@ -641,7 +642,7 @@ export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvas
       const payload = await response.json() as { error?: { message?: string } };
       if (!response.ok) throw new Error(payload.error?.message || "drive-save-failed");
       savedHistoryCountRef.current = history.count;
-      setIsDirty(false);
+      onDirtyChange?.(false);
       setDriveMessage("Đã lưu tranh vào thư mục SunShinSon trên Google Drive!");
       window.dispatchEvent(new Event("sunshinson:drive-saved"));
     } catch (error) {

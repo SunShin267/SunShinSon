@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { SunLogo } from "../components/SunLogo";
 import { readChildName } from "../lib/child-session";
@@ -94,7 +94,8 @@ export default function ColoringPage() {
   const [savedArts, setSavedArts] = useState<SavedColoringArt[]>([]);
   const [driveArts, setDriveArts] = useState<ColoringArt[]>([]);
   const [artModalMode, setArtModalMode] = useState<"preview" | "paint" | null>(null);
-  const [paintHasUnsavedChanges, setPaintHasUnsavedChanges] = useState(false);
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const paintHasUnsavedChangesRef = useRef(false);
 
   const refreshDriveArts = useCallback(async () => {
     try {
@@ -115,13 +116,20 @@ export default function ColoringPage() {
   }, []);
 
   const closeArtModal = useCallback(() => {
-    if (artModalMode === "paint" && paintHasUnsavedChanges) {
-      const shouldClose = window.confirm("Tranh của bé đang có thay đổi chưa lưu. Bé có chắc muốn thoát và bỏ phần vừa tô không?");
-      if (!shouldClose) return;
+    if (artModalMode === "paint" && paintHasUnsavedChangesRef.current) {
+      setShowExitConfirmation(true);
+      return;
     }
-    setPaintHasUnsavedChanges(false);
+    paintHasUnsavedChangesRef.current = false;
+    setShowExitConfirmation(false);
     setArtModalMode(null);
-  }, [artModalMode, paintHasUnsavedChanges]);
+  }, [artModalMode]);
+
+  const confirmCloseArtModal = useCallback(() => {
+    paintHasUnsavedChangesRef.current = false;
+    setShowExitConfirmation(false);
+    setArtModalMode(null);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -150,14 +158,16 @@ export default function ColoringPage() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeArtModal();
+      if (event.key !== "Escape") return;
+      if (showExitConfirmation) setShowExitConfirmation(false);
+      else closeArtModal();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [artModalMode, closeArtModal]);
+  }, [artModalMode, closeArtModal, showExitConfirmation]);
 
   async function draw() {
     if (!prompt.trim() || isDrawing) return;
@@ -198,7 +208,8 @@ export default function ColoringPage() {
     setPrompt(art.prompt);
     setSelectedArt(art);
     setGenerationNotice("");
-    setPaintHasUnsavedChanges(false);
+    paintHasUnsavedChangesRef.current = false;
+    setShowExitConfirmation(false);
     setArtModalMode("preview");
   }
 
@@ -267,7 +278,8 @@ export default function ColoringPage() {
 
   function startPainting(art: ColoringArt) {
     setSelectedArt(art);
-    setPaintHasUnsavedChanges(false);
+    paintHasUnsavedChangesRef.current = false;
+    setShowExitConfirmation(false);
     setArtModalMode("paint");
   }
 
@@ -441,9 +453,30 @@ export default function ColoringPage() {
               </div>
             ) : (
               <div className="coloring-modal-paint-body">
-                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} onDirtyChange={setPaintHasUnsavedChanges} />
+                <ColoringCanvas
+                  key={selectedArt.id}
+                  art={selectedArt}
+                  childName={childName}
+                  onDirtyChange={(dirty) => { paintHasUnsavedChangesRef.current = dirty; }}
+                />
               </div>
             )}
+          </section>
+        </div>
+      ) : null}
+
+      {showExitConfirmation ? (
+        <div className="coloring-exit-confirm-backdrop" role="presentation" onPointerDown={(event) => {
+          if (event.target === event.currentTarget) setShowExitConfirmation(false);
+        }}>
+          <section className="coloring-exit-confirm" role="alertdialog" aria-modal="true" aria-labelledby="coloring-exit-title" aria-describedby="coloring-exit-description">
+            <span className="coloring-exit-confirm-icon" aria-hidden="true">🎨</span>
+            <h2 id="coloring-exit-title">Bé muốn thoát tranh này?</h2>
+            <p id="coloring-exit-description">Phần bé vừa tô chưa được lưu. Nếu thoát bây giờ, các nét màu mới sẽ bị mất.</p>
+            <div>
+              <button className="coloring-exit-stay" onClick={() => setShowExitConfirmation(false)} autoFocus>Ở lại tô tiếp</button>
+              <button className="coloring-exit-leave" onClick={confirmCloseArtModal}>Thoát và bỏ nét tô</button>
+            </div>
           </section>
         </div>
       ) : null}
