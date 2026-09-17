@@ -239,7 +239,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const controller = viewportControllerRef.current;
     if (!stage || !controller) return;
     controller.zoomAt(nextZoom / 100, stage.clientWidth / 2, stage.clientHeight / 2);
-    setIsPanMode(controller.getState().scale > 1);
   }
 
   function resetView() {
@@ -255,7 +254,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const anchor = stagePoint(event.clientX, event.clientY);
     const sensitivity = event.ctrlKey ? 0.0015 : 0.0032;
     controller.zoomAt(controller.getState().scale * Math.exp(-event.deltaY * sensitivity), anchor.x, anchor.y);
-    setIsPanMode(controller.getState().scale > 1);
   }
 
   function trackTouchStart(event: ReactPointerEvent<HTMLDivElement>) {
@@ -282,7 +280,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       startTransform: controller.getState(),
     };
     setIsPinching(true);
-    setIsPanMode(true);
   }
 
   function trackTouchMove(event: ReactPointerEvent<HTMLDivElement>) {
@@ -303,7 +300,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       pinch.startCenter,
       midpoint(first, second),
     );
-    setIsPanMode(controller.getState().scale > 1);
   }
 
   function trackTouchEnd(event: ReactPointerEvent<HTMLDivElement>) {
@@ -315,7 +311,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     event.stopPropagation();
     pinchGestureRef.current = null;
     setIsPinching(false);
-    setIsPanMode((viewportControllerRef.current?.getState().scale ?? 1) > 1);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
@@ -400,6 +395,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
         onPointerUp={finishPan}
         onPointerCancel={finishPan}
         onWheel={zoomWithWheel}
+        onDoubleClick={resetView}
       >
         <div ref={viewportContentRef} className="coloring-zoom-surface">
           <div className="coloring-paper">
@@ -454,7 +450,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
           </button>
           <button onClick={resetView} disabled={zoom === 100} aria-label="Đặt lại góc nhìn">⟲ Reset View</button>
         </div>
-        <p className="coloring-pan-tip">Dùng 2 ngón để thu phóng · 1 ngón để kéo khi phóng lớn · lăn chuột trên máy tính</p>
+        <p className="coloring-pan-tip">1 ngón để tô · 2 ngón để thu phóng và kéo · nhấp đúp để về 100% · chọn Di chuyển nếu muốn kéo bằng 1 ngón</p>
         <div className="coloring-palette" role="group" aria-label="Chọn màu vẽ">
           {palette.map((item) => (
             <button key={item.color} className={color === item.color && !isEraser ? "is-active" : ""} style={{ backgroundColor: item.color }}
