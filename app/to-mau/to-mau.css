@@ -147,6 +147,12 @@
 .coloring-preview-actions .coloring-start-paint:hover { background: #c94e32; }
 .coloring-preview-actions .coloring-download-painted { background: #dff7e7; }
 .coloring-preview-actions .coloring-download-painted:disabled { background: #eae5dc; color: #8b837a; cursor: default; }
+.coloring-preview-actions .coloring-drive-save { background: #dcecff; }
+.coloring-preview-actions .coloring-drive-connect { background: #fff0bd; }
+.coloring-preview-actions .coloring-drive-save:disabled { background: #eae5dc; color: #8b837a; cursor: default; }
+.coloring-drive-status, .coloring-drive-message { width: min(100%, 680px); margin: 7px auto 0; text-align: center; font-size: 9px; font-weight: 800; line-height: 1.45; }
+.coloring-drive-status { color: #39704a; }
+.coloring-drive-message { color: #765f20; }
 
 .coloring-paint-main { width: min(calc(100% - 40px), 1180px); margin: 0 auto; padding: 42px 0 76px; }
 .coloring-paint-intro { max-width: 800px; margin: 0 auto 27px; text-align: center; }

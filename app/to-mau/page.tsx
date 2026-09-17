@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 
 import { SunLogo } from "../components/SunLogo";
 import { readChildName } from "../lib/child-session";
@@ -30,7 +30,16 @@ type ColoringApiResponse = {
   error?: { message?: string };
 };
 
-const galleryThemes = ["Tất cả", "Mẫu của bé", ...libraryThemes];
+type DriveDrawing = {
+  id: string;
+  artId: string;
+  title: string;
+  src: string;
+};
+
+type DriveDrawingsResponse = { drawings?: DriveDrawing[] };
+
+const galleryThemes = ["Tất cả", "Mẫu của bé", "Google Drive", ...libraryThemes];
 const MAX_LOCAL_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_LOCAL_IMAGE_DIMENSION = 1_600;
 
@@ -83,7 +92,36 @@ export default function ColoringPage() {
   const [activeTheme, setActiveTheme] = useState("Tất cả");
   const [generationNotice, setGenerationNotice] = useState("");
   const [savedArts, setSavedArts] = useState<SavedColoringArt[]>([]);
+  const [driveArts, setDriveArts] = useState<ColoringArt[]>([]);
   const [artModalMode, setArtModalMode] = useState<"preview" | "paint" | null>(null);
+  const [paintHasUnsavedChanges, setPaintHasUnsavedChanges] = useState(false);
+
+  const refreshDriveArts = useCallback(async () => {
+    try {
+      const response = await fetch("/api/coloring/drive/drawings", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json() as DriveDrawingsResponse;
+      setDriveArts((payload.drawings ?? []).map((drawing) => ({
+        id: `drive-${drawing.id}`,
+        title: drawing.title,
+        prompt: `Tranh đã tô được lưu trên Google Drive: ${drawing.title}`,
+        src: drawing.src,
+        icon: "☁",
+        theme: "Google Drive",
+      })));
+    } catch {
+      // Drive is optional; the local gallery remains available when offline.
+    }
+  }, []);
+
+  const closeArtModal = useCallback(() => {
+    if (artModalMode === "paint" && paintHasUnsavedChanges) {
+      const shouldClose = window.confirm("Tranh của bé đang có thay đổi chưa lưu. Bé có chắc muốn thoát và bỏ phần vừa tô không?");
+      if (!shouldClose) return;
+    }
+    setPaintHasUnsavedChanges(false);
+    setArtModalMode(null);
+  }, [artModalMode, paintHasUnsavedChanges]);
 
   useEffect(() => {
     let isActive = true;
@@ -97,23 +135,29 @@ export default function ColoringPage() {
         isSavedColoringCollection,
       );
       if (savedCollection) setSavedArts(savedCollection);
+      void refreshDriveArts();
     });
-    return () => { isActive = false; };
-  }, []);
+    const refreshAfterSave = () => { void refreshDriveArts(); };
+    window.addEventListener("sunshinson:drive-saved", refreshAfterSave);
+    return () => {
+      isActive = false;
+      window.removeEventListener("sunshinson:drive-saved", refreshAfterSave);
+    };
+  }, [refreshDriveArts]);
 
   useEffect(() => {
     if (!artModalMode) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setArtModalMode(null);
+      if (event.key === "Escape") closeArtModal();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [artModalMode]);
+  }, [artModalMode, closeArtModal]);
 
   async function draw() {
     if (!prompt.trim() || isDrawing) return;
@@ -154,6 +198,7 @@ export default function ColoringPage() {
     setPrompt(art.prompt);
     setSelectedArt(art);
     setGenerationNotice("");
+    setPaintHasUnsavedChanges(false);
     setArtModalMode("preview");
   }
 
@@ -222,10 +267,11 @@ export default function ColoringPage() {
 
   function startPainting(art: ColoringArt) {
     setSelectedArt(art);
+    setPaintHasUnsavedChanges(false);
     setArtModalMode("paint");
   }
 
-  const allArts: ColoringArt[] = [...savedArts, ...coloringArts];
+  const allArts: ColoringArt[] = [...savedArts, ...driveArts, ...coloringArts];
   const visibleArts = allArts.filter((art) => activeTheme === "Tất cả" || art.theme === activeTheme);
   const selectedIsSaved = Boolean(selectedArt && savedArts.some((art) => art.id === selectedArt.id));
 
@@ -326,7 +372,7 @@ export default function ColoringPage() {
         <section className="coloring-gallery" id="bo-suu-tap" aria-labelledby="gallery-title">
           <div className="coloring-section-heading">
             <div><p className="coloring-kicker">Thư viện tranh nét</p><h2 id="gallery-title">Chọn một tranh, tô cả thế giới</h2></div>
-            <p>{coloringArts.length} ý tưởng có sẵn · {savedArts.length} mẫu của bé</p>
+            <p>{coloringArts.length} ý tưởng có sẵn · {savedArts.length} mẫu trên máy · {driveArts.length} tranh Drive</p>
           </div>
           <div className="coloring-filters" aria-label="Chủ đề tranh">
             {galleryThemes.map((theme) => (
@@ -359,8 +405,8 @@ export default function ColoringPage() {
         <div
           className="coloring-modal-backdrop"
           role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setArtModalMode(null);
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) closeArtModal();
           }}
         >
           <section
@@ -374,7 +420,7 @@ export default function ColoringPage() {
                 <small>{artModalMode === "paint" ? "Xưởng tô màu" : "Xem tranh"}</small>
                 <h2 id="coloring-modal-title">{selectedArt.title}</h2>
               </div>
-              <button onClick={() => setArtModalMode(null)} aria-label="Đóng cửa sổ tranh">×</button>
+              <button onClick={closeArtModal} aria-label="Đóng cửa sổ tranh">×</button>
             </header>
 
             {artModalMode === "preview" ? (
@@ -395,7 +441,7 @@ export default function ColoringPage() {
               </div>
             ) : (
               <div className="coloring-modal-paint-body">
-                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} />
+                <ColoringCanvas key={selectedArt.id} art={selectedArt} childName={childName} onDirtyChange={setPaintHasUnsavedChanges} />
               </div>
             )}
           </section>

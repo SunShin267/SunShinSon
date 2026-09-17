@@ -39,6 +39,12 @@ type PinchGesture = {
 };
 type RecentClickCommand = { command: CanvasCommand; completedAt: number };
 type TouchTapCandidate = { moved: boolean; start: TouchPoint; startedAt: number };
+type DriveStatus = { configured: boolean; connected: boolean; email?: string };
+type ColoringCanvasProps = {
+  art: ColoringArt;
+  childName: string;
+  onDirtyChange?: (dirty: boolean) => void;
+};
 
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
@@ -66,7 +72,7 @@ function midpoint(first: TouchPoint, second: TouchPoint): TouchPoint {
   return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
 }
 
-export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName: string }) {
+export function ColoringCanvas({ art, childName, onDirtyChange }: ColoringCanvasProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const brushCursorRef = useRef<HTMLSpanElement>(null);
@@ -91,6 +97,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const brushCursorFrameRef = useRef<number | null>(null);
   const brushCursorScaleRef = useRef(1);
   const brushCursorPointRef = useRef<TouchPoint | null>(null);
+  const savedHistoryCountRef = useRef(0);
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(8);
   const [tool, setTool] = useState<Tool>("brush");
@@ -102,9 +109,41 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const [tolerance, setTolerance] = useState(32);
   const [zoom, setZoom] = useState(100);
   const [history, setHistory] = useState<HistoryState>(emptyHistory);
+  const [isDirty, setIsDirty] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<DriveStatus | null>(null);
+  const [driveMessage, setDriveMessage] = useState("");
+  const [isSavingToDrive, setIsSavingToDrive] = useState(false);
 
   const isEraser = tool === "eraser";
   const isBucket = tool === "bucket";
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    let active = true;
+    const refreshStatus = async () => {
+      try {
+        const response = await fetch("/api/coloring/drive/status", { cache: "no-store" });
+        const payload = await response.json() as DriveStatus;
+        if (active) setDriveStatus(payload);
+      } catch {
+        if (active) setDriveStatus({ configured: false, connected: false });
+      }
+    };
+    const receiveOAuthResult = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "sunshinson:drive-connected") return;
+      setDriveMessage(event.data.ok ? "Google Drive đã sẵn sàng để lưu tranh!" : event.data.message || "Chưa thể kết nối Google Drive.");
+      void refreshStatus();
+    };
+    void refreshStatus();
+    window.addEventListener("message", receiveOAuthResult);
+    return () => {
+      active = false;
+      window.removeEventListener("message", receiveOAuthResult);
+    };
+  }, []);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -152,7 +191,10 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (!image || !canvas || !image.naturalWidth || !image.naturalHeight) return;
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
-    managerRef.current = new CanvasManager(canvas, setHistory);
+    managerRef.current = new CanvasManager(canvas, (nextHistory) => {
+      setHistory(nextHistory);
+      setIsDirty(nextHistory.count !== savedHistoryCountRef.current);
+    });
     activeStrokeRef.current = null;
     activePointerRef.current = null;
     activeStrokeAppliedRef.current = false;
@@ -167,6 +209,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     pendingTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     pendingTapTimersRef.current.clear();
     setHistory(emptyHistory);
+    savedHistoryCountRef.current = 0;
+    setIsDirty(false);
     setIsPanMode(false);
     setIsDragging(false);
     setIsPinching(false);
@@ -554,6 +598,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       link.href = url;
       link.download = `${art.id}-be-to-mau.png`;
       link.click();
+      savedHistoryCountRef.current = history.count;
+      setIsDirty(false);
       window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     }, "image/png");
   }
@@ -561,6 +607,50 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   function printPainting() {
     const output = createCompositeCanvas();
     if (output) printColoringImage(output.toDataURL("image/png"), art.title);
+  }
+
+  function connectGoogleDrive() {
+    if (!driveStatus?.configured) {
+      setDriveMessage("Google Drive chưa được cấu hình. Ba mẹ hãy bổ sung thông tin OAuth cho SunShinSon nhé.");
+      return;
+    }
+    const popup = window.open("/api/coloring/drive/connect", "sunshinson-google-drive", "popup,width=560,height=720");
+    if (!popup) setDriveMessage("Trình duyệt đang chặn cửa sổ kết nối. Ba mẹ hãy cho phép pop-up rồi thử lại nhé.");
+  }
+
+  async function savePaintingToDrive() {
+    if (!history.count || isSavingToDrive) return;
+    if (!driveStatus?.connected) {
+      connectGoogleDrive();
+      return;
+    }
+    const output = createCompositeCanvas();
+    if (!output) return;
+    setIsSavingToDrive(true);
+    setDriveMessage("Sun đang cất tranh vào Google Drive...");
+    try {
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        output.toBlob((value) => value ? resolve(value) : reject(new Error("png-unavailable")), "image/png");
+      });
+      const form = new FormData();
+      form.set("file", blob, `${art.id}-be-to-mau.png`);
+      form.set("artId", art.id);
+      form.set("title", art.title);
+      form.set("childName", childName);
+      const response = await fetch("/api/coloring/drive/drawings", { method: "POST", body: form });
+      const payload = await response.json() as { error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message || "drive-save-failed");
+      savedHistoryCountRef.current = history.count;
+      setIsDirty(false);
+      setDriveMessage("Đã lưu tranh vào thư mục SunShinSon trên Google Drive!");
+      window.dispatchEvent(new Event("sunshinson:drive-saved"));
+    } catch (error) {
+      setDriveMessage(error instanceof Error && error.message !== "drive-save-failed"
+        ? error.message
+        : "Sun chưa thể lưu tranh lên Google Drive. Ba mẹ hãy thử lại nhé.");
+    } finally {
+      setIsSavingToDrive(false);
+    }
   }
 
   const previewDiameter = Math.max(8, Math.round(brushSize * 0.48));
@@ -682,7 +772,16 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       <div className="coloring-preview-actions coloring-paint-actions">
         <button onClick={printPainting}>⌁ In tranh</button>
         <button className="coloring-download-painted" onClick={downloadColoredPainting} disabled={!history.count}>↓ Tải tranh đã tô</button>
+        {driveStatus?.connected ? (
+          <button className="coloring-drive-save" onClick={savePaintingToDrive} disabled={!history.count || isSavingToDrive}>
+            {isSavingToDrive ? "Đang lưu..." : "☁ Lưu Google Drive"}
+          </button>
+        ) : (
+          <button className="coloring-drive-connect" onClick={connectGoogleDrive}>☁ Kết nối Google Drive</button>
+        )}
       </div>
+      {driveStatus?.connected ? <p className="coloring-drive-status">Đã kết nối Drive{driveStatus.email ? ` · ${driveStatus.email}` : ""}</p> : null}
+      {driveMessage ? <p className="coloring-drive-message" role="status">{driveMessage}</p> : null}
     </>
   );
 }

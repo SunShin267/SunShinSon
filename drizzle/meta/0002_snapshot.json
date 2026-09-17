@@ -1,0 +1,1167 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "c64d4b3f-8cd1-4baa-aafb-ba7448d7bb41",
+  "prevId": "c74617c4-8965-48e6-bedf-079ec8c3ba8b",
+  "tables": {
+    "admin_login_attempts": {
+      "name": "admin_login_attempts",
+      "columns": {
+        "client_key": {
+          "name": "client_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "failed_count": {
+          "name": "failed_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "window_started_at": {
+          "name": "window_started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "blocked_until": {
+          "name": "blocked_until",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "coloring_drawings": {
+      "name": "coloring_drawings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "art_id": {
+          "name": "art_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "child_name": {
+          "name": "child_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "drive_file_id": {
+          "name": "drive_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'image/png'"
+        },
+        "size_bytes": {
+          "name": "size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "coloring_drawings_drive_file_unique": {
+          "name": "coloring_drawings_drive_file_unique",
+          "columns": [
+            "drive_file_id"
+          ],
+          "isUnique": true
+        },
+        "coloring_drawings_user_updated_idx": {
+          "name": "coloring_drawings_user_updated_idx",
+          "columns": [
+            "user_id",
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "coloring_drawings_user_id_google_drive_connections_user_id_fk": {
+          "name": "coloring_drawings_user_id_google_drive_connections_user_id_fk",
+          "tableFrom": "coloring_drawings",
+          "tableTo": "google_drive_connections",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "google_drive_connections": {
+      "name": "google_drive_connections",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "encrypted_refresh_token": {
+          "name": "encrypted_refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "encrypted_access_token": {
+          "name": "encrypted_access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "folder_id": {
+          "name": "folder_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "questions": {
+      "name": "questions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "age": {
+          "name": "age",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "question_text": {
+          "name": "question_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalized_question": {
+          "name": "normalized_question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "option_a": {
+          "name": "option_a",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "option_b": {
+          "name": "option_b",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "option_c": {
+          "name": "option_c",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "option_d": {
+          "name": "option_d",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "correct_index": {
+          "name": "correct_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "explanation": {
+          "name": "explanation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "questions_active_idx": {
+          "name": "questions_active_idx",
+          "columns": [
+            "is_active"
+          ],
+          "isUnique": false
+        },
+        "questions_topic_age_active_idx": {
+          "name": "questions_topic_age_active_idx",
+          "columns": [
+            "topic",
+            "age",
+            "is_active"
+          ],
+          "isUnique": false
+        },
+        "questions_normalized_unique": {
+          "name": "questions_normalized_unique",
+          "columns": [
+            "normalized_question"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "xiangqi_games": {
+      "name": "xiangqi_games",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "red_session_id": {
+          "name": "red_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "black_session_id": {
+          "name": "black_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "variant": {
+          "name": "variant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "time_control_ms": {
+          "name": "time_control_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state_json": {
+          "name": "state_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "active_side": {
+          "name": "active_side",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "red_clock_ms": {
+          "name": "red_clock_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "black_clock_ms": {
+          "name": "black_clock_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active_clock_started_at": {
+          "name": "active_clock_started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "red_ready": {
+          "name": "red_ready",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "black_ready": {
+          "name": "black_ready",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "pending_draw_by": {
+          "name": "pending_draw_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "red_rematch": {
+          "name": "red_rematch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "black_rematch": {
+          "name": "black_rematch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "result_kind": {
+          "name": "result_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "winner_side": {
+          "name": "winner_side",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "xiangqi_games_red_status_idx": {
+          "name": "xiangqi_games_red_status_idx",
+          "columns": [
+            "red_session_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_games_black_status_idx": {
+          "name": "xiangqi_games_black_status_idx",
+          "columns": [
+            "black_session_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_games_status_updated_idx": {
+          "name": "xiangqi_games_status_updated_idx",
+          "columns": [
+            "status",
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "xiangqi_games_red_session_id_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_games_red_session_id_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_games",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "red_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "xiangqi_games_black_session_id_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_games_black_session_id_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_games",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "black_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "xiangqi_games_pending_draw_by_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_games_pending_draw_by_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_games",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "pending_draw_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "xiangqi_games_players_check": {
+          "name": "xiangqi_games_players_check",
+          "value": "\"xiangqi_games\".\"red_session_id\" <> \"xiangqi_games\".\"black_session_id\""
+        },
+        "xiangqi_games_variant_check": {
+          "name": "xiangqi_games_variant_check",
+          "value": "\"xiangqi_games\".\"variant\" IN ('bright', 'blind')"
+        },
+        "xiangqi_games_time_control_check": {
+          "name": "xiangqi_games_time_control_check",
+          "value": "\"xiangqi_games\".\"time_control_ms\" IN (300000, 600000, 900000)"
+        },
+        "xiangqi_games_revision_check": {
+          "name": "xiangqi_games_revision_check",
+          "value": "\"xiangqi_games\".\"revision\" >= 0"
+        },
+        "xiangqi_games_active_side_check": {
+          "name": "xiangqi_games_active_side_check",
+          "value": "\"xiangqi_games\".\"active_side\" IS NULL OR \"xiangqi_games\".\"active_side\" IN ('red', 'black')"
+        },
+        "xiangqi_games_clock_check": {
+          "name": "xiangqi_games_clock_check",
+          "value": "\"xiangqi_games\".\"red_clock_ms\" >= 0 AND \"xiangqi_games\".\"black_clock_ms\" >= 0"
+        },
+        "xiangqi_games_ready_check": {
+          "name": "xiangqi_games_ready_check",
+          "value": "\"xiangqi_games\".\"red_ready\" IN (0, 1) AND \"xiangqi_games\".\"black_ready\" IN (0, 1)"
+        },
+        "xiangqi_games_rematch_check": {
+          "name": "xiangqi_games_rematch_check",
+          "value": "\"xiangqi_games\".\"red_rematch\" IN (0, 1) AND \"xiangqi_games\".\"black_rematch\" IN (0, 1)"
+        },
+        "xiangqi_games_status_check": {
+          "name": "xiangqi_games_status_check",
+          "value": "\"xiangqi_games\".\"status\" IN ('active', 'finished')"
+        },
+        "xiangqi_games_result_check": {
+          "name": "xiangqi_games_result_check",
+          "value": "\"xiangqi_games\".\"result_kind\" IS NULL OR \"xiangqi_games\".\"result_kind\" IN ('checkmate', 'no-legal-move', 'repetition', 'timeout', 'resignation', 'draw-agreed')"
+        },
+        "xiangqi_games_winner_check": {
+          "name": "xiangqi_games_winner_check",
+          "value": "\"xiangqi_games\".\"winner_side\" IS NULL OR \"xiangqi_games\".\"winner_side\" IN ('red', 'black')"
+        }
+      }
+    },
+    "xiangqi_invites": {
+      "name": "xiangqi_invites",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_session_id": {
+          "name": "from_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_session_id": {
+          "name": "to_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "room_code": {
+          "name": "room_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "variant": {
+          "name": "variant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "clock_minutes": {
+          "name": "clock_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "xiangqi_invites_room_code_unique": {
+          "name": "xiangqi_invites_room_code_unique",
+          "columns": [
+            "room_code"
+          ],
+          "isUnique": true
+        },
+        "xiangqi_invites_from_status_idx": {
+          "name": "xiangqi_invites_from_status_idx",
+          "columns": [
+            "from_session_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_invites_to_status_idx": {
+          "name": "xiangqi_invites_to_status_idx",
+          "columns": [
+            "to_session_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_invites_status_expiry_idx": {
+          "name": "xiangqi_invites_status_expiry_idx",
+          "columns": [
+            "status",
+            "expires_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "xiangqi_invites_from_session_id_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_invites_from_session_id_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_invites",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "from_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "xiangqi_invites_to_session_id_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_invites_to_session_id_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_invites",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "to_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "xiangqi_invites_game_id_xiangqi_games_id_fk": {
+          "name": "xiangqi_invites_game_id_xiangqi_games_id_fk",
+          "tableFrom": "xiangqi_invites",
+          "tableTo": "xiangqi_games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "xiangqi_invites_kind_check": {
+          "name": "xiangqi_invites_kind_check",
+          "value": "\"xiangqi_invites\".\"kind\" IN ('link', 'direct')"
+        },
+        "xiangqi_invites_variant_check": {
+          "name": "xiangqi_invites_variant_check",
+          "value": "\"xiangqi_invites\".\"variant\" IN ('bright', 'blind')"
+        },
+        "xiangqi_invites_clock_check": {
+          "name": "xiangqi_invites_clock_check",
+          "value": "\"xiangqi_invites\".\"clock_minutes\" IN (5, 10, 15)"
+        },
+        "xiangqi_invites_status_check": {
+          "name": "xiangqi_invites_status_check",
+          "value": "\"xiangqi_invites\".\"status\" IN ('pending', 'accepted', 'declined', 'canceled', 'expired')"
+        },
+        "xiangqi_invites_target_check": {
+          "name": "xiangqi_invites_target_check",
+          "value": "(\"xiangqi_invites\".\"kind\" = 'link' AND \"xiangqi_invites\".\"to_session_id\" IS NULL AND \"xiangqi_invites\".\"room_code\" IS NOT NULL) OR (\"xiangqi_invites\".\"kind\" = 'direct' AND \"xiangqi_invites\".\"to_session_id\" IS NOT NULL AND \"xiangqi_invites\".\"room_code\" IS NULL)"
+        }
+      }
+    },
+    "xiangqi_moves": {
+      "name": "xiangqi_moves",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "game_revision": {
+          "name": "game_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ply": {
+          "name": "ply",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "side": {
+          "name": "side",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_x": {
+          "name": "from_x",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_y": {
+          "name": "from_y",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_x": {
+          "name": "to_x",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_y": {
+          "name": "to_y",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revealed_role": {
+          "name": "revealed_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "red_clock_ms": {
+          "name": "red_clock_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "black_clock_ms": {
+          "name": "black_clock_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "xiangqi_moves_game_revision_unique": {
+          "name": "xiangqi_moves_game_revision_unique",
+          "columns": [
+            "game_id",
+            "game_revision"
+          ],
+          "isUnique": true
+        },
+        "xiangqi_moves_game_ply_unique": {
+          "name": "xiangqi_moves_game_ply_unique",
+          "columns": [
+            "game_id",
+            "ply"
+          ],
+          "isUnique": true
+        },
+        "xiangqi_moves_game_created_idx": {
+          "name": "xiangqi_moves_game_created_idx",
+          "columns": [
+            "game_id",
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "xiangqi_moves_game_id_xiangqi_games_id_fk": {
+          "name": "xiangqi_moves_game_id_xiangqi_games_id_fk",
+          "tableFrom": "xiangqi_moves",
+          "tableTo": "xiangqi_games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "xiangqi_moves_game_revision_check": {
+          "name": "xiangqi_moves_game_revision_check",
+          "value": "\"xiangqi_moves\".\"game_revision\" > 0"
+        },
+        "xiangqi_moves_ply_check": {
+          "name": "xiangqi_moves_ply_check",
+          "value": "\"xiangqi_moves\".\"ply\" > 0"
+        },
+        "xiangqi_moves_side_check": {
+          "name": "xiangqi_moves_side_check",
+          "value": "\"xiangqi_moves\".\"side\" IN ('red', 'black')"
+        },
+        "xiangqi_moves_coords_check": {
+          "name": "xiangqi_moves_coords_check",
+          "value": "\"xiangqi_moves\".\"from_x\" BETWEEN 0 AND 8 AND \"xiangqi_moves\".\"to_x\" BETWEEN 0 AND 8 AND \"xiangqi_moves\".\"from_y\" BETWEEN 0 AND 9 AND \"xiangqi_moves\".\"to_y\" BETWEEN 0 AND 9"
+        },
+        "xiangqi_moves_revealed_role_check": {
+          "name": "xiangqi_moves_revealed_role_check",
+          "value": "\"xiangqi_moves\".\"revealed_role\" IS NULL OR \"xiangqi_moves\".\"revealed_role\" IN ('advisor', 'elephant', 'horse', 'rook', 'cannon', 'soldier')"
+        },
+        "xiangqi_moves_clock_check": {
+          "name": "xiangqi_moves_clock_check",
+          "value": "\"xiangqi_moves\".\"red_clock_ms\" >= 0 AND \"xiangqi_moves\".\"black_clock_ms\" >= 0"
+        }
+      }
+    },
+    "xiangqi_presence": {
+      "name": "xiangqi_presence",
+      "columns": {
+        "session_id": {
+          "name": "session_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'available'"
+        },
+        "invite_id": {
+          "name": "invite_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_heartbeat_at": {
+          "name": "last_heartbeat_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "xiangqi_presence_status_heartbeat_idx": {
+          "name": "xiangqi_presence_status_heartbeat_idx",
+          "columns": [
+            "status",
+            "last_heartbeat_at"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_presence_invite_idx": {
+          "name": "xiangqi_presence_invite_idx",
+          "columns": [
+            "invite_id"
+          ],
+          "isUnique": false
+        },
+        "xiangqi_presence_game_idx": {
+          "name": "xiangqi_presence_game_idx",
+          "columns": [
+            "game_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "xiangqi_presence_session_id_xiangqi_sessions_id_fk": {
+          "name": "xiangqi_presence_session_id_xiangqi_sessions_id_fk",
+          "tableFrom": "xiangqi_presence",
+          "tableTo": "xiangqi_sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "xiangqi_presence_invite_id_xiangqi_invites_id_fk": {
+          "name": "xiangqi_presence_invite_id_xiangqi_invites_id_fk",
+          "tableFrom": "xiangqi_presence",
+          "tableTo": "xiangqi_invites",
+          "columnsFrom": [
+            "invite_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "xiangqi_presence_game_id_xiangqi_games_id_fk": {
+          "name": "xiangqi_presence_game_id_xiangqi_games_id_fk",
+          "tableFrom": "xiangqi_presence",
+          "tableTo": "xiangqi_games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "xiangqi_presence_status_check": {
+          "name": "xiangqi_presence_status_check",
+          "value": "\"xiangqi_presence\".\"status\" IN ('available', 'waiting', 'playing')"
+        }
+      }
+    },
+    "xiangqi_sessions": {
+      "name": "xiangqi_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "xiangqi_sessions_last_seen_idx": {
+          "name": "xiangqi_sessions_last_seen_idx",
+          "columns": [
+            "last_seen_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

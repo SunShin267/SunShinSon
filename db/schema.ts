@@ -30,6 +30,33 @@ export const adminLoginAttempts = sqliteTable("admin_login_attempts", {
   blockedUntil: integer("blocked_until"),
 });
 
+export const googleDriveConnections = sqliteTable("google_drive_connections", {
+  userId: text("user_id").primaryKey(),
+  email: text("email").notNull(),
+  encryptedRefreshToken: text("encrypted_refresh_token").notNull(),
+  encryptedAccessToken: text("encrypted_access_token"),
+  accessTokenExpiresAt: integer("access_token_expires_at"),
+  folderId: text("folder_id"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const coloringDrawings = sqliteTable("coloring_drawings", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => googleDriveConnections.userId, { onDelete: "cascade" }),
+  artId: text("art_id").notNull(),
+  title: text("title").notNull(),
+  childName: text("child_name").notNull(),
+  driveFileId: text("drive_file_id").notNull(),
+  mimeType: text("mime_type").notNull().default("image/png"),
+  sizeBytes: integer("size_bytes").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("coloring_drawings_drive_file_unique").on(table.driveFileId),
+  index("coloring_drawings_user_updated_idx").on(table.userId, table.updatedAt),
+]);
+
 export const xiangqiSessions = sqliteTable("xiangqi_sessions", {
   id: text("id").primaryKey(),
   displayName: text("display_name").notNull(),

@@ -14,6 +14,9 @@ export interface Env {
   POLLINATIONS_API_KEY?: string;
   POLLINATIONS_IMAGE_MODEL?: string;
   POLLINATIONS_TEXT_MODEL?: string;
+  GOOGLE_DRIVE_CLIENT_ID?: string;
+  GOOGLE_DRIVE_CLIENT_SECRET?: string;
+  GOOGLE_DRIVE_TOKEN_KEY?: string;
   IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

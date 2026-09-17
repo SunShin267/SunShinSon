@@ -4,6 +4,7 @@ import type { ImageHandlers } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import type { Env } from "./env";
 import { handleColoringApiRequest } from "./coloring-api";
+import { handleGoogleDriveApiRequest } from "./google-drive-api";
 import { handleApiRequest } from "./questions-api";
 import { handleXiangqiApiRequest } from "./xiangqi-api";
 
@@ -24,6 +25,9 @@ const worker = {
 
     const coloringApiResponse = await handleColoringApiRequest(request, env);
     if (coloringApiResponse) return coloringApiResponse;
+
+    const googleDriveApiResponse = await handleGoogleDriveApiRequest(request, env);
+    if (googleDriveApiResponse) return googleDriveApiResponse;
 
     const xiangqiApiResponse = await handleXiangqiApiRequest(request, env);
     if (xiangqiApiResponse) return xiangqiApiResponse;
