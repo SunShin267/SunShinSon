@@ -22,7 +22,6 @@ import {
 } from "./paint-bucket";
 import { printColoringImage } from "./print-coloring";
 
-type BrushCursor = { x: number; y: number; scale: number; visible: boolean };
 type Tool = "brush" | "bucket" | "eraser";
 type PanGesture = { pointerId: number; start: ViewTransform; x: number; y: number };
 type TouchPoint = { x: number; y: number };
@@ -62,6 +61,7 @@ function midpoint(first: TouchPoint, second: TouchPoint): TouchPoint {
 export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const brushCursorRef = useRef<HTMLSpanElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const viewportContentRef = useRef<HTMLDivElement>(null);
   const viewportControllerRef = useRef<CanvasViewportController | null>(null);
@@ -75,6 +75,11 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const reportedScaleRef = useRef(1);
   const recentClickCommandsRef = useRef<RecentClickCommand[]>([]);
   const viewGestureGenerationRef = useRef(0);
+  const activeStrokeAppliedRef = useRef(false);
+  const pendingMouseTapTimersRef = useRef(new Set<number>());
+  const brushCursorFrameRef = useRef<number | null>(null);
+  const brushCursorScaleRef = useRef(1);
+  const brushCursorPointRef = useRef<TouchPoint | null>(null);
   const [color, setColor] = useState(palette[0].color);
   const [brushSize, setBrushSize] = useState(28);
   const [tool, setTool] = useState<Tool>("brush");
@@ -86,7 +91,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const [tolerance, setTolerance] = useState(32);
   const [zoom, setZoom] = useState(100);
   const [history, setHistory] = useState<HistoryState>(emptyHistory);
-  const [brushCursor, setBrushCursor] = useState<BrushCursor>({ x: 0, y: 0, scale: 1, visible: false });
 
   const isEraser = tool === "eraser";
   const isBucket = tool === "bucket";
@@ -95,6 +99,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const stage = stageRef.current;
     const content = viewportContentRef.current;
     if (!stage || !content) return;
+    const pendingMouseTapTimers = pendingMouseTapTimersRef.current;
 
     const reportTransform = (state: ViewTransform) => {
       reportedScaleRef.current = state.scale;
@@ -112,9 +117,23 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     return () => {
       observer.disconnect();
       if (zoomFrameRef.current !== null) cancelAnimationFrame(zoomFrameRef.current);
+      if (brushCursorFrameRef.current !== null) cancelAnimationFrame(brushCursorFrameRef.current);
+      pendingMouseTapTimers.forEach((timer) => window.clearTimeout(timer));
+      pendingMouseTapTimers.clear();
       viewportControllerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const cursor = brushCursorRef.current;
+    if (!cursor) return;
+    cursor.style.backgroundColor = isEraser ? "rgba(255,255,255,.72)" : `${color}55`;
+    cursor.style.borderColor = isEraser ? "#2e261e" : color;
+    const diameter = Math.max(6, brushSize * brushCursorScaleRef.current);
+    cursor.style.width = `${diameter}px`;
+    cursor.style.height = `${diameter}px`;
+    if (isPanMode || isBucket) cursor.style.opacity = "0";
+  }, [brushSize, color, isBucket, isEraser, isPanMode]);
 
   function prepareCanvas() {
     const image = imageRef.current;
@@ -125,11 +144,14 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     managerRef.current = new CanvasManager(canvas, setHistory);
     activeStrokeRef.current = null;
     activePointerRef.current = null;
+    activeStrokeAppliedRef.current = false;
     panGestureRef.current = null;
     touchPointsRef.current.clear();
     pinchGestureRef.current = null;
     recentClickCommandsRef.current = [];
     viewGestureGenerationRef.current += 1;
+    pendingMouseTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    pendingMouseTapTimersRef.current.clear();
     setHistory(emptyHistory);
     setIsPanMode(false);
     setIsDragging(false);
@@ -149,15 +171,28 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function updateBrushCursor(event: ReactPointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    setBrushCursor({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-      scale: canvas.width ? rect.width / canvas.width : 1,
-      visible: event.pointerType !== "touch",
+    if (event.pointerType === "touch") return;
+    brushCursorPointRef.current = { x: event.clientX, y: event.clientY };
+    if (brushCursorFrameRef.current !== null) return;
+    brushCursorFrameRef.current = requestAnimationFrame(() => {
+      brushCursorFrameRef.current = null;
+      const canvas = canvasRef.current;
+      const cursor = brushCursorRef.current;
+      const point = brushCursorPointRef.current;
+      if (!canvas || !cursor || !point) return;
+      const rect = canvas.getBoundingClientRect();
+      brushCursorScaleRef.current = canvas.width ? rect.width / canvas.width : 1;
+      const diameter = Math.max(6, brushSize * brushCursorScaleRef.current);
+      cursor.style.width = `${diameter}px`;
+      cursor.style.height = `${diameter}px`;
+      cursor.style.transform = `translate3d(${point.x - rect.left}px, ${point.y - rect.top}px, 0) translate(-50%, -50%)`;
+      cursor.style.opacity = isPanMode || isBucket ? "0" : "1";
     });
+  }
+
+  function hideBrushCursor() {
+    brushCursorPointRef.current = null;
+    if (brushCursorRef.current) brushCursorRef.current.style.opacity = "0";
   }
 
   function stagePoint(clientX: number, clientY: number): TouchPoint {
@@ -171,7 +206,25 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (canvas && pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     activeStrokeRef.current = null;
     activePointerRef.current = null;
+    activeStrokeAppliedRef.current = false;
     managerRef.current?.redraw();
+  }
+
+  function cancelPendingMouseTaps() {
+    pendingMouseTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    pendingMouseTapTimersRef.current.clear();
+  }
+
+  function scheduleMouseTap(command: CanvasCommand) {
+    const manager = managerRef.current;
+    if (!manager) return;
+    const timer = window.setTimeout(() => {
+      pendingMouseTapTimersRef.current.delete(timer);
+      if (managerRef.current !== manager) return;
+      manager.commit(command);
+      rememberClickCommand(command);
+    }, 320);
+    pendingMouseTapTimersRef.current.add(timer);
   }
 
   function rememberClickCommand(command: CanvasCommand) {
@@ -217,6 +270,11 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (isPanMode || isFilling || pinchGestureRef.current) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
+    const scale = viewportControllerRef.current?.getState().scale ?? 1;
+    if (event.pointerType === "mouse" && event.detail > 1 && Math.abs(scale - 1) >= 0.001) {
+      discardMarksAndResetView();
+      return;
+    }
     updateBrushCursor(event);
     const point = pointFromEvent(event);
     if (isBucket) {
@@ -227,8 +285,11 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const stroke: StrokeData = { color, eraser: isEraser, points: [point], size: brushSize };
     activePointerRef.current = event.pointerId;
     activeStrokeRef.current = stroke;
-    const context = event.currentTarget.getContext("2d");
-    if (context) new StrokeCommand(stroke).apply(context);
+    activeStrokeAppliedRef.current = event.pointerType !== "mouse";
+    if (activeStrokeAppliedRef.current) {
+      const context = event.currentTarget.getContext("2d");
+      if (context) new StrokeCommand(stroke).apply(context);
+    }
   }
 
   function continueStroke(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -242,6 +303,10 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     stroke.points.push(point);
     const context = canvasRef.current?.getContext("2d");
     if (!context) return;
+    if (!activeStrokeAppliedRef.current) {
+      new StrokeCommand({ ...stroke, points: [previous] }).apply(context);
+      activeStrokeAppliedRef.current = true;
+    }
     context.save();
     context.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over";
     context.strokeStyle = stroke.color;
@@ -261,10 +326,15 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
     const command = new StrokeCommand(stroke);
-    managerRef.current?.commit(command, true);
-    if (event.pointerType === "mouse" && isTapStroke(stroke)) rememberClickCommand(command);
+    if (event.pointerType === "mouse" && !activeStrokeAppliedRef.current && isTapStroke(stroke)) {
+      scheduleMouseTap(command);
+    } else {
+      managerRef.current?.commit(command, activeStrokeAppliedRef.current);
+      if (event.pointerType === "mouse" && isTapStroke(stroke)) rememberClickCommand(command);
+    }
     activeStrokeRef.current = null;
     activePointerRef.current = null;
+    activeStrokeAppliedRef.current = false;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
@@ -281,21 +351,25 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     setIsDragging(false);
   }
 
-  function resetViewFromDoubleClick(event: ReactMouseEvent<HTMLDivElement>) {
+  function discardMarksAndResetView() {
     const controller = viewportControllerRef.current;
     if (!controller || Math.abs(controller.getState().scale - 1) < 0.001) return;
-    event.preventDefault();
     viewGestureGenerationRef.current += 1;
     cancelActiveStroke();
-    if (event.target === canvasRef.current) {
-      const cutoff = performance.now() - 700;
-      const commands = recentClickCommandsRef.current
-        .filter((entry) => entry.completedAt >= cutoff)
-        .map((entry) => entry.command);
-      managerRef.current?.discardCommands(commands);
-    }
+    cancelPendingMouseTaps();
+    const cutoff = performance.now() - 900;
+    const commands = recentClickCommandsRef.current
+      .filter((entry) => entry.completedAt >= cutoff)
+      .map((entry) => entry.command);
+    managerRef.current?.discardCommands(commands);
     recentClickCommandsRef.current = [];
     resetView();
+  }
+
+  function resetViewFromDoubleClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target !== canvasRef.current) return;
+    event.preventDefault();
+    discardMarksAndResetView();
   }
 
   function zoomWithWheel(event: ReactWheelEvent<HTMLDivElement>) {
@@ -428,7 +502,6 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (output) printColoringImage(output.toDataURL("image/png"), art.title);
   }
 
-  const cursorDiameter = Math.max(6, brushSize * brushCursor.scale);
   const previewDiameter = Math.max(8, Math.round(brushSize * 0.48));
 
   return (
@@ -462,21 +535,19 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
                 onPointerUp={finishStroke}
                 onPointerCancel={finishStroke}
                 onPointerLeave={() => {
-                  if (activePointerRef.current === null) setBrushCursor((cursor) => ({ ...cursor, visible: false }));
+                  if (activePointerRef.current === null) hideBrushCursor();
                 }}
                 aria-label={`Vùng tô màu cho tranh ${art.title}`}
               />
               <span
+                ref={brushCursorRef}
                 aria-hidden="true"
                 className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
                 style={{
                   backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
                   borderColor: isEraser ? "#2e261e" : color,
-                  height: cursorDiameter,
-                  left: brushCursor.x,
-                  opacity: brushCursor.visible && !isPanMode && !isBucket ? 1 : 0,
-                  top: brushCursor.y,
-                  width: cursorDiameter,
+                  height: Math.max(6, brushSize),
+                  width: Math.max(6, brushSize),
                 }}
               />
               {isFilling ? <div className="coloring-fill-loading" role="status"><span />Đang đổ màu...</div> : null}

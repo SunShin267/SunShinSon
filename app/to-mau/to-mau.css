@@ -85,7 +85,7 @@
 .coloring-canvas-wrap canvas { z-index: 1; cursor: none; touch-action: none; mix-blend-mode: multiply; }
 .coloring-canvas-wrap canvas.is-panning { pointer-events: none; }
 .coloring-canvas-wrap canvas.is-bucket { cursor: cell; }
-.coloring-brush-cursor { position: absolute; z-index: 2; border: 2px solid; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); transition: width .08s, height .08s, opacity .08s; box-shadow: 0 0 0 1px rgba(255,255,255,.82); }
+.coloring-brush-cursor { position: absolute; top: 0; left: 0; z-index: 2; opacity: 0; border: 2px solid; border-radius: 50%; pointer-events: none; transform: translate3d(-100px, -100px, 0); transition: width .08s, height .08s, opacity .08s; box-shadow: 0 0 0 1px rgba(255,255,255,.82); will-change: transform; }
 .coloring-brush-cursor.is-eraser { border-style: dashed; box-shadow: 0 0 0 1px rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.9); }
 .coloring-paper > p { margin: 6px 0 0; text-align: center; font-size: 11px; font-weight: 900; }
 .coloring-paint-stage { position: relative; width: min(100%, 680px); height: min(68vh, 760px); overflow: hidden; padding: 10px; border: 1px solid #cfc5b7; border-radius: 16px; background: #e9e1d5; box-sizing: border-box; overscroll-behavior: contain; touch-action: none; }
