@@ -178,14 +178,16 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       brushCursorFrameRef.current = null;
       const canvas = canvasRef.current;
       const cursor = brushCursorRef.current;
+      const stage = stageRef.current;
       const point = brushCursorPointRef.current;
-      if (!canvas || !cursor || !point) return;
-      const rect = canvas.getBoundingClientRect();
-      brushCursorScaleRef.current = canvas.width ? rect.width / canvas.width : 1;
+      if (!canvas || !cursor || !stage || !point) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      brushCursorScaleRef.current = canvas.width ? canvasRect.width / canvas.width : 1;
       const diameter = Math.max(6, brushSize * brushCursorScaleRef.current);
       cursor.style.width = `${diameter}px`;
       cursor.style.height = `${diameter}px`;
-      cursor.style.transform = `translate3d(${point.x - rect.left}px, ${point.y - rect.top}px, 0) translate(-50%, -50%)`;
+      cursor.style.transform = `translate3d(${point.x - stageRect.left}px, ${point.y - stageRect.top}px, 0) translate(-50%, -50%)`;
       cursor.style.opacity = isPanMode || isBucket ? "0" : "1";
     });
   }
@@ -228,7 +230,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function rememberClickCommand(command: CanvasCommand) {
-    const cutoff = performance.now() - 700;
+    const cutoff = performance.now() - 2_000;
     recentClickCommandsRef.current = [
       ...recentClickCommandsRef.current.filter((entry) => entry.completedAt >= cutoff),
       { command, completedAt: performance.now() },
@@ -346,6 +348,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function resetView() {
+    hideBrushCursor();
     viewportControllerRef.current?.reset();
     setIsPanMode(false);
     setIsDragging(false);
@@ -357,7 +360,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     viewGestureGenerationRef.current += 1;
     cancelActiveStroke();
     cancelPendingMouseTaps();
-    const cutoff = performance.now() - 900;
+    const cutoff = performance.now() - 2_000;
     const commands = recentClickCommandsRef.current
       .filter((entry) => entry.completedAt >= cutoff)
       .map((entry) => entry.command);
@@ -369,6 +372,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   function resetViewFromDoubleClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (event.target !== canvasRef.current) return;
     event.preventDefault();
+    event.stopPropagation();
     discardMarksAndResetView();
   }
 
@@ -382,6 +386,15 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   }
 
   function trackTouchStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse") {
+      const scale = viewportControllerRef.current?.getState().scale ?? 1;
+      if (event.detail > 1 && Math.abs(scale - 1) >= 0.001 && event.target === canvasRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        discardMarksAndResetView();
+      }
+      return;
+    }
     if (event.pointerType !== "touch") return;
     touchPointsRef.current.set(event.pointerId, stagePoint(event.clientX, event.clientY));
     if (touchPointsRef.current.size < 2) return;
@@ -519,7 +532,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
         onPointerUp={finishPan}
         onPointerCancel={finishPan}
         onWheel={zoomWithWheel}
-        onDoubleClick={resetViewFromDoubleClick}
+        onDoubleClickCapture={resetViewFromDoubleClick}
       >
         <div ref={viewportContentRef} className="coloring-zoom-surface">
           <div className="coloring-paper">
@@ -539,22 +552,22 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
                 }}
                 aria-label={`Vùng tô màu cho tranh ${art.title}`}
               />
-              <span
-                ref={brushCursorRef}
-                aria-hidden="true"
-                className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
-                style={{
-                  backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
-                  borderColor: isEraser ? "#2e261e" : color,
-                  height: Math.max(6, brushSize),
-                  width: Math.max(6, brushSize),
-                }}
-              />
               {isFilling ? <div className="coloring-fill-loading" role="status"><span />Đang đổ màu...</div> : null}
             </div>
             <p>{art.title}</p>
           </div>
         </div>
+        <span
+          ref={brushCursorRef}
+          aria-hidden="true"
+          className={`coloring-brush-cursor ${isEraser ? "is-eraser" : ""}`}
+          style={{
+            backgroundColor: isEraser ? "rgba(255,255,255,.72)" : `${color}55`,
+            borderColor: isEraser ? "#2e261e" : color,
+            height: Math.max(6, brushSize),
+            width: Math.max(6, brushSize),
+          }}
+        />
       </div>
 
       <div className="coloring-paint-tools">
