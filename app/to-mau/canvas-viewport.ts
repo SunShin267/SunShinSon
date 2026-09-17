@@ -4,10 +4,25 @@ export const MAX_VIEW_SCALE = 5;
 export type ViewTransform = { scale: number; x: number; y: number };
 export type ViewSize = { height: number; width: number };
 export type ClientPoint = { x: number; y: number };
+export type TimedClientPoint = ClientPoint & { time: number };
 export type ClientRectLike = { height: number; left: number; top: number; width: number };
 
 export function clampViewScale(scale: number) {
   return Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, scale));
+}
+
+/** Recognizes two nearby taps without relying on browser-synthesized click events. */
+export function isDoubleTap(
+  previous: TimedClientPoint | null,
+  current: TimedClientPoint,
+  maximumDelay = 450,
+  maximumDistance = 36,
+) {
+  if (!previous) return false;
+  const elapsed = current.time - previous.time;
+  return elapsed >= 0
+    && elapsed <= maximumDelay
+    && Math.hypot(current.x - previous.x, current.y - previous.y) <= maximumDistance;
 }
 
 /** Maps a transformed CSS position back to the canvas' stable pixel space. */

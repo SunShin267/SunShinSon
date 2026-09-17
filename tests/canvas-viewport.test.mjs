@@ -6,6 +6,7 @@ import {
   canvasPointFromClient,
   clampViewScale,
   constrainViewTransform,
+  isDoubleTap,
 } from "../app/to-mau/canvas-viewport.ts";
 
 test("viewport scale remains within 50% and 500% during repeated zoom", () => {
@@ -53,4 +54,12 @@ test("painting coordinates remain exact at minimum and maximum zoom", () => {
     canvasPointFromClient({ x: 2600, y: 2650 }, { left: 100, top: 150, width: 5000, height: 5000 }, canvas),
     { x: 500, y: 500 },
   );
+});
+
+test("double-tap recognition requires nearby taps within the mobile time window", () => {
+  const first = { x: 100, y: 100, time: 1_000 };
+  assert.equal(isDoubleTap(first, { x: 120, y: 115, time: 1_380 }), true);
+  assert.equal(isDoubleTap(first, { x: 120, y: 115, time: 1_600 }), false);
+  assert.equal(isDoubleTap(first, { x: 160, y: 100, time: 1_200 }), false);
+  assert.equal(isDoubleTap(null, { x: 100, y: 100, time: 1_200 }), false);
 });

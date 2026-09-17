@@ -9,7 +9,13 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react";
 
-import { CanvasViewportController, canvasPointFromClient, type ViewTransform } from "./canvas-viewport";
+import {
+  CanvasViewportController,
+  canvasPointFromClient,
+  isDoubleTap,
+  type TimedClientPoint,
+  type ViewTransform,
+} from "./canvas-viewport";
 import type { ColoringArt } from "./coloring-arts";
 import {
   BucketFillTool,
@@ -32,6 +38,7 @@ type PinchGesture = {
   startTransform: ViewTransform;
 };
 type RecentClickCommand = { command: CanvasCommand; completedAt: number };
+type TouchTapCandidate = { moved: boolean; start: TouchPoint; startedAt: number };
 
 const palette = [
   { color: "#ef4444", name: "Đỏ" }, { color: "#f97316", name: "Cam" },
@@ -42,10 +49,11 @@ const palette = [
 ];
 
 const brushPresets = [
-  { label: "Mảnh", size: 14 },
-  { label: "Vừa", size: 28 },
-  { label: "To", size: 46 },
-  { label: "Rất to", size: 68 },
+  { label: "Siêu mảnh", size: 4 },
+  { label: "Mảnh", size: 8 },
+  { label: "Vừa", size: 16 },
+  { label: "To", size: 28 },
+  { label: "Rất to", size: 46 },
 ];
 
 const emptyHistory: HistoryState = { canRedo: false, canUndo: false, count: 0 };
@@ -70,18 +78,21 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
   const activePointerRef = useRef<number | null>(null);
   const panGestureRef = useRef<PanGesture | null>(null);
   const touchPointsRef = useRef(new Map<number, TouchPoint>());
+  const touchTapCandidatesRef = useRef(new Map<number, TouchTapCandidate>());
+  const suppressedTouchPointersRef = useRef(new Set<number>());
+  const lastTouchTapRef = useRef<TimedClientPoint | null>(null);
   const pinchGestureRef = useRef<PinchGesture | null>(null);
   const zoomFrameRef = useRef<number | null>(null);
   const reportedScaleRef = useRef(1);
   const recentClickCommandsRef = useRef<RecentClickCommand[]>([]);
   const viewGestureGenerationRef = useRef(0);
   const activeStrokeAppliedRef = useRef(false);
-  const pendingMouseTapTimersRef = useRef(new Set<number>());
+  const pendingTapTimersRef = useRef(new Set<number>());
   const brushCursorFrameRef = useRef<number | null>(null);
   const brushCursorScaleRef = useRef(1);
   const brushCursorPointRef = useRef<TouchPoint | null>(null);
   const [color, setColor] = useState(palette[0].color);
-  const [brushSize, setBrushSize] = useState(28);
+  const [brushSize, setBrushSize] = useState(8);
   const [tool, setTool] = useState<Tool>("brush");
   const [isPanMode, setIsPanMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -99,7 +110,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     const stage = stageRef.current;
     const content = viewportContentRef.current;
     if (!stage || !content) return;
-    const pendingMouseTapTimers = pendingMouseTapTimersRef.current;
+    const pendingTapTimers = pendingTapTimersRef.current;
 
     const reportTransform = (state: ViewTransform) => {
       reportedScaleRef.current = state.scale;
@@ -118,8 +129,8 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       observer.disconnect();
       if (zoomFrameRef.current !== null) cancelAnimationFrame(zoomFrameRef.current);
       if (brushCursorFrameRef.current !== null) cancelAnimationFrame(brushCursorFrameRef.current);
-      pendingMouseTapTimers.forEach((timer) => window.clearTimeout(timer));
-      pendingMouseTapTimers.clear();
+      pendingTapTimers.forEach((timer) => window.clearTimeout(timer));
+      pendingTapTimers.clear();
       viewportControllerRef.current = null;
     };
   }, []);
@@ -147,11 +158,14 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     activeStrokeAppliedRef.current = false;
     panGestureRef.current = null;
     touchPointsRef.current.clear();
+    touchTapCandidatesRef.current.clear();
+    suppressedTouchPointersRef.current.clear();
+    lastTouchTapRef.current = null;
     pinchGestureRef.current = null;
     recentClickCommandsRef.current = [];
     viewGestureGenerationRef.current += 1;
-    pendingMouseTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    pendingMouseTapTimersRef.current.clear();
+    pendingTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    pendingTapTimersRef.current.clear();
     setHistory(emptyHistory);
     setIsPanMode(false);
     setIsDragging(false);
@@ -212,21 +226,21 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     managerRef.current?.redraw();
   }
 
-  function cancelPendingMouseTaps() {
-    pendingMouseTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    pendingMouseTapTimersRef.current.clear();
+  function cancelPendingTapCommands() {
+    pendingTapTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    pendingTapTimersRef.current.clear();
   }
 
-  function scheduleMouseTap(command: CanvasCommand) {
+  function scheduleTapCommand(command: CanvasCommand) {
     const manager = managerRef.current;
     if (!manager) return;
     const timer = window.setTimeout(() => {
-      pendingMouseTapTimersRef.current.delete(timer);
+      pendingTapTimersRef.current.delete(timer);
       if (managerRef.current !== manager) return;
       manager.commit(command);
       rememberClickCommand(command);
     }, 320);
-    pendingMouseTapTimersRef.current.add(timer);
+    pendingTapTimersRef.current.add(timer);
   }
 
   function rememberClickCommand(command: CanvasCommand) {
@@ -280,14 +294,14 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     updateBrushCursor(event);
     const point = pointFromEvent(event);
     if (isBucket) {
-      void fillAt(point, event.pointerType === "mouse");
+      void fillAt(point, event.pointerType === "mouse" || event.pointerType === "touch");
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
     const stroke: StrokeData = { color, eraser: isEraser, points: [point], size: brushSize };
     activePointerRef.current = event.pointerId;
     activeStrokeRef.current = stroke;
-    activeStrokeAppliedRef.current = event.pointerType !== "mouse";
+    activeStrokeAppliedRef.current = event.pointerType !== "mouse" && event.pointerType !== "touch";
     if (activeStrokeAppliedRef.current) {
       const context = event.currentTarget.getContext("2d");
       if (context) new StrokeCommand(stroke).apply(context);
@@ -328,11 +342,12 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (!stroke || activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
     const command = new StrokeCommand(stroke);
-    if (event.pointerType === "mouse" && !activeStrokeAppliedRef.current && isTapStroke(stroke)) {
-      scheduleMouseTap(command);
+    const isTapPointer = event.pointerType === "mouse" || event.pointerType === "touch";
+    if (isTapPointer && !activeStrokeAppliedRef.current && isTapStroke(stroke)) {
+      scheduleTapCommand(command);
     } else {
       managerRef.current?.commit(command, activeStrokeAppliedRef.current);
-      if (event.pointerType === "mouse" && isTapStroke(stroke)) rememberClickCommand(command);
+      if (isTapPointer && isTapStroke(stroke)) rememberClickCommand(command);
     }
     activeStrokeRef.current = null;
     activePointerRef.current = null;
@@ -359,7 +374,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
     if (!controller || Math.abs(controller.getState().scale - 1) < 0.001) return;
     viewGestureGenerationRef.current += 1;
     cancelActiveStroke();
-    cancelPendingMouseTaps();
+    cancelPendingTapCommands();
     const cutoff = performance.now() - 2_000;
     const commands = recentClickCommandsRef.current
       .filter((entry) => entry.completedAt >= cutoff)
@@ -396,8 +411,22 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
       return;
     }
     if (event.pointerType !== "touch") return;
-    touchPointsRef.current.set(event.pointerId, stagePoint(event.clientX, event.clientY));
+    const point = stagePoint(event.clientX, event.clientY);
+    const now = performance.now();
+    const scale = viewportControllerRef.current?.getState().scale ?? 1;
+    if (Math.abs(scale - 1) >= 0.001 && isDoubleTap(lastTouchTapRef.current, { ...point, time: now })) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressedTouchPointersRef.current.add(event.pointerId);
+      lastTouchTapRef.current = null;
+      discardMarksAndResetView();
+      return;
+    }
+    touchTapCandidatesRef.current.set(event.pointerId, { moved: false, start: point, startedAt: now });
+    touchPointsRef.current.set(event.pointerId, point);
     if (touchPointsRef.current.size < 2) return;
+    lastTouchTapRef.current = null;
+    touchTapCandidatesRef.current.forEach((candidate) => { candidate.moved = true; });
     event.preventDefault();
     event.stopPropagation();
     cancelActiveStroke();
@@ -422,7 +451,10 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
 
   function trackTouchMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "touch" || !touchPointsRef.current.has(event.pointerId)) return;
-    touchPointsRef.current.set(event.pointerId, stagePoint(event.clientX, event.clientY));
+    const point = stagePoint(event.clientX, event.clientY);
+    touchPointsRef.current.set(event.pointerId, point);
+    const candidate = touchTapCandidatesRef.current.get(event.pointerId);
+    if (candidate && distanceBetween(candidate.start, point) > 10) candidate.moved = true;
     const pinch = pinchGestureRef.current;
     if (!pinch) return;
     const first = touchPointsRef.current.get(pinch.pointerIds[0]);
@@ -442,9 +474,25 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
 
   function trackTouchEnd(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "touch") return;
+    if (suppressedTouchPointersRef.current.delete(event.pointerId)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    const candidate = touchTapCandidatesRef.current.get(event.pointerId);
+    touchTapCandidatesRef.current.delete(event.pointerId);
     touchPointsRef.current.delete(event.pointerId);
     const pinch = pinchGestureRef.current;
-    if (!pinch || !pinch.pointerIds.includes(event.pointerId)) return;
+    if (!pinch || !pinch.pointerIds.includes(event.pointerId)) {
+      const now = performance.now();
+      if (candidate && !candidate.moved && now - candidate.startedAt <= 350) {
+        const point = stagePoint(event.clientX, event.clientY);
+        lastTouchTapRef.current = { ...point, time: now };
+      } else {
+        lastTouchTapRef.current = null;
+      }
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     pinchGestureRef.current = null;
@@ -622,7 +670,7 @@ export function ColoringCanvas({ art, childName }: { art: ColoringArt; childName
           <label className="coloring-brush-size">
             <span>Nét</span>
             <span className="coloring-brush-size-dot" style={{ width: previewDiameter, height: previewDiameter, backgroundColor: isEraser ? "#fff" : color }} aria-hidden="true" />
-            <input type="range" min="10" max="72" step="2" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} aria-label="Độ dày nét vẽ" />
+            <input type="range" min="2" max="72" step="2" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} aria-label="Độ dày nét vẽ" />
             <output aria-live="polite">{brushSize}</output>
           </label>
           <button onClick={() => managerRef.current?.undo()} disabled={!history.canUndo}>↶ Hoàn tác</button>
